@@ -45,9 +45,10 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 	/** Character movement component **/
 	UCharacterMovementComponent* CharacterMovementComponent;
 
+
 public:
 	// Sets default values for this character's properties
-	AWRC_WallRunBase();
+	AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer);
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)

@@ -12,7 +12,8 @@
 #include "iostream"
 
 // Sets default values
-AWRC_WallRunBase::AWRC_WallRunBase()
+AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
+	:Super(ObjectInitalizer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -70,7 +71,7 @@ void AWRC_WallRunBase::BeginPlay()
 	
 	ResetJump(MaxJumps);
 
-	CharacterMovementComponent->SetPlaneConstraintEnabled(true);
+	GetCharacterMovement()->SetPlaneConstraintEnabled(true);
 
 #if 0
 	//Timeline demo
@@ -154,7 +155,15 @@ void AWRC_WallRunBase::InputActionJump()
 
 void AWRC_WallRunBase::ResetJump(int jumps)
 {
-	JumpsLeft = std::max(0, MaxJumps);
+	if (jumps > MaxJumps) {
+		JumpsLeft = 2;
+	}
+	else if (jumps <= 0) {
+		JumpsLeft = 0;
+	}
+	else {
+		JumpsLeft = jumps;
+	}
 }
 
 void AWRC_WallRunBase::OnComponentHit(FVector HitImpactNormal)
@@ -162,7 +171,7 @@ void AWRC_WallRunBase::OnComponentHit(FVector HitImpactNormal)
 	FRDASVals returnVals;
 	if (!WallRunningBool) {
 		if (CanSurfaceWallBeRan(HitImpactNormal)) {
-			if(CharacterMovementComponent->IsFalling())
+			if(GetCharacterMovement()->IsFalling())
 			{
 				FindRunDirectionAndSide(HitImpactNormal, returnVals);
 
@@ -181,9 +190,9 @@ void AWRC_WallRunBase::BeginWallRun()
 {
 	FVector planeNormal;
 	planeNormal.Z = 1.0;
-	CharacterMovementComponent->AirControl = 1.0f;
-	CharacterMovementComponent->GravityScale = 0.0f;
-	CharacterMovementComponent->SetPlaneConstraintNormal(planeNormal);
+	GetCharacterMovement()->AirControl = 1.0f;
+	GetCharacterMovement()->GravityScale = 0.0f;
+	GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
 	WallRunningBool = false;
 	BeginCameraTilt();
 	UpdateWallRunBool = true;
@@ -201,9 +210,9 @@ void AWRC_WallRunBase::EndWallRun(StopReason reason)
 	else if (reason == fell) {
 		ResetJump(1);
 	}
-	CharacterMovementComponent->AirControl = 0.05;
-	CharacterMovementComponent->GravityScale = 1.0;
-	CharacterMovementComponent->SetPlaneConstraintNormal(PlaneNorm);
+	GetCharacterMovement()->AirControl = 0.05;
+	GetCharacterMovement()->GravityScale = 1.0;
+	GetCharacterMovement()->SetPlaneConstraintNormal(PlaneNorm);
 	WallRunningBool = false;
 
 	EndCameraTilt();
@@ -257,7 +266,7 @@ bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 	}
 
 	SurfaceAngleCheck = (acos(FVector::DotProduct(NormalizedSNVector, SurfaceNormal)) * 180) / 3.14159;
-	MaxFloorAngle = CharacterMovementComponent->GetWalkableFloorAngle();
+	MaxFloorAngle = GetCharacterMovement()->GetWalkableFloorAngle();
 	if (SurfaceAngleCheck < MaxFloorAngle) {
 		return true;
 	}
@@ -280,13 +289,13 @@ FVector AWRC_WallRunBase::FindLaunchVelocity() const
 
 		LaunchDirection = FVector::CrossProduct(WallRunDirection, WallRunSideLocalZ);
 	}
-	else if (CharacterMovementComponent->IsFalling())
+	else if (GetCharacterMovement()->IsFalling())
 	{
 		LaunchDirection = (GetActorRightVector() * RightAxis) + (GetActorForwardVector() * ForwardAxis);
 	}
 
 	LaunchDirection.Z += 1;
-	LaunchDirection *= CharacterMovementComponent->JumpZVelocity;
+	LaunchDirection *= GetCharacterMovement()->JumpZVelocity;
 	return LaunchDirection;
 }
 
@@ -306,13 +315,13 @@ bool AWRC_WallRunBase::AreRequiredKeysDown() const
 
 FVector2D AWRC_WallRunBase::GetHorizontalVelocity() const
 {
-	return FVector2D(CharacterMovementComponent->Velocity);
+	return FVector2D(GetCharacterMovement()->Velocity);
 }
 
 void AWRC_WallRunBase::SetHorizontalVelocity(FVector2D HorizontalVelocity)
 {
-	CharacterMovementComponent->Velocity.X = HorizontalVelocity.X;
-	CharacterMovementComponent->Velocity.Y = HorizontalVelocity.Y;
+	GetCharacterMovement()->Velocity.X = HorizontalVelocity.X;
+	GetCharacterMovement()->Velocity.Y = HorizontalVelocity.Y;
 }
 
 void AWRC_WallRunBase::UpdateWallRun()
@@ -351,19 +360,19 @@ void AWRC_WallRunBase::UpdateWallRun()
 
 	WallRunDirection = FRDASVals.Direction;
 	
-	CharacterMovementComponent->Velocity.X = WallRunDirection.X * CharacterMovementComponent->GetMaxSpeed();
-	CharacterMovementComponent->Velocity.Y = WallRunDirection.Y * CharacterMovementComponent->GetMaxSpeed();
-	CharacterMovementComponent->Velocity.Z = 0.0;
+	GetCharacterMovement()->Velocity.X = WallRunDirection.X * GetCharacterMovement()->GetMaxSpeed();
+	GetCharacterMovement()->Velocity.Y = WallRunDirection.Y * GetCharacterMovement()->GetMaxSpeed();
+	GetCharacterMovement()->Velocity.Z = 0.0;
 }
 
 void AWRC_WallRunBase::ClampHorizontalVelocity()
 {
-	if (CharacterMovementComponent->IsFalling()) {
+	if (GetCharacterMovement()->IsFalling()) {
 		FVector2D CharVelocity;
 		float CharTime;
 		
 		CharVelocity = GetHorizontalVelocity();
-		CharTime = CharVelocity.Size() / CharacterMovementComponent->GetMaxSpeed();
+		CharTime = CharVelocity.Size() / GetCharacterMovement()->GetMaxSpeed();
 
 		if (CharTime > 1.0) {
 			SetHorizontalVelocity(GetHorizontalVelocity()/CharTime);
