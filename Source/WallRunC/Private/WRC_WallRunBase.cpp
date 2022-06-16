@@ -18,8 +18,19 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+#if 0
 	// Set size for collision capsule
+	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComp"));
+	CapsuleComp->InitCapsuleSize(55.f, 96.0f);
+
+	CapsuleComp->SetSimulatePhysics(true);
+	CapsuleComp->SetNotifyRigidBodyCollision(true);
+	CapsuleComp->BodyInstance.SetCollisionProfileName("BlockAllDynamic");
+	CapsuleComp->OnComponentHit.AddDynamic(this, &AWRC_WallRunBase::OnComponentHit);
+#endif
+
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
+	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AWRC_WallRunBase::OnComponentHit);
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
@@ -72,6 +83,11 @@ void AWRC_WallRunBase::BeginPlay()
 	ResetJump(MaxJumps);
 
 	GetCharacterMovement()->SetPlaneConstraintEnabled(true);
+
+	WallRunDirection.X = 0.0;
+	WallRunDirection.Y = 0.0;
+	WallRunDirection.Z = 0.0;
+	
 
 #if 0
 	//Timeline demo
@@ -131,7 +147,7 @@ void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 	}
 }
 
-void AWRC_WallRunBase::OnLanded(FVector2D Hit)
+void AWRC_WallRunBase::Landed(const FHitResult& Hit)
 {
 	ResetJump(MaxJumps);
 }
@@ -142,7 +158,7 @@ void AWRC_WallRunBase::InputActionJump()
 		return;
 	}
 
-	if (JumpsLeft > 0) {
+	if (!WallRunningBool && JumpsLeft > 0) {
 		JumpsLeft -= 1;
 	}
 
@@ -151,6 +167,7 @@ void AWRC_WallRunBase::InputActionJump()
 	if (WallRunningBool) {
 		EndWallRun(jumped);
 	}
+
 }
 
 void AWRC_WallRunBase::ResetJump(int jumps)
@@ -166,20 +183,24 @@ void AWRC_WallRunBase::ResetJump(int jumps)
 	}
 }
 
-void AWRC_WallRunBase::OnComponentHit(FVector HitImpactNormal)
+void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	FRDASVals returnVals;
-	if (!WallRunningBool) {
-		if (CanSurfaceWallBeRan(HitImpactNormal)) {
-			if(GetCharacterMovement()->IsFalling())
-			{
-				FindRunDirectionAndSide(HitImpactNormal, returnVals);
+	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
+	{
+		FVector ImpactNormal = Hit.ImpactNormal;
+		FRDASVals returnVals;
+		if (!WallRunningBool) {
+			if (CanSurfaceWallBeRan(ImpactNormal)) {
+				if (GetCharacterMovement()->IsFalling())
+				{
+					FindRunDirectionAndSide(ImpactNormal, returnVals);
 
-				WallRunDirection = returnVals.Direction;
-				eWallRun = returnVals.Side;
+					WallRunDirection = returnVals.Direction;
+					eWallRun = returnVals.Side;
 
-				if (AreRequiredKeysDown()) {
-					BeginWallRun();
+					if (AreRequiredKeysDown()) {
+						BeginWallRun();
+					}
 				}
 			}
 		}
@@ -193,7 +214,7 @@ void AWRC_WallRunBase::BeginWallRun()
 	GetCharacterMovement()->AirControl = 1.0f;
 	GetCharacterMovement()->GravityScale = 0.0f;
 	GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
-	WallRunningBool = false;
+	WallRunningBool = true;
 	BeginCameraTilt();
 	UpdateWallRunBool = true;
 
@@ -202,13 +223,14 @@ void AWRC_WallRunBase::BeginWallRun()
 void AWRC_WallRunBase::EndWallRun(StopReason reason)
 {
 	FVector PlaneNorm;
+	PlaneNorm.X = 0.0;
+	PlaneNorm.Y = 0.0;
 	PlaneNorm.Z = 0.0;
-	MaxJumps -= 1;
-	if (reason == jumped) {
-		ResetJump(MaxJumps);
-	}
-	else if (reason == fell) {
+	if (reason == fell) {
 		ResetJump(1);
+	}
+	else {
+		ResetJump(MaxJumps - 1);
 	}
 	GetCharacterMovement()->AirControl = 0.05;
 	GetCharacterMovement()->GravityScale = 1.0;
@@ -233,6 +255,8 @@ void AWRC_WallRunBase::FindRunDirectionAndSide(FVector WallNormal, FRDASVals& re
 	WallRunSide localSide;
 	FVector localVector;
 
+	localVector.X = 0.0;
+	localVector.Y = 0.0;
 
 	if (FVector::DotProduct(WallNormal, GetActorRightVector()) > 0) {
 		localSide = right;
@@ -256,6 +280,10 @@ bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 	if (SurfaceNormal.Z < -0.05) {
 		return false;
 	}
+
+	Normalize(SurfaceNormal, 0.0001, NormalizedSNVector);
+
+#if 0
 	if (SurfaceNormal.FVector::Normalize(0.0001)) {
 		NormalizedSNVector = SurfaceNormal;
 	}
@@ -264,8 +292,10 @@ bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 		NormalizedSNVector.Y = 0.0;
 		NormalizedSNVector.Z = 0.0;
 	}
+#endif
 
-	SurfaceAngleCheck = (acos(FVector::DotProduct(NormalizedSNVector, SurfaceNormal)) * 180) / 3.14159;
+
+	SurfaceAngleCheck = (acos(NormalizedSNVector.DotProduct(NormalizedSNVector, SurfaceNormal)) * 180) / 3.14159;
 	MaxFloorAngle = GetCharacterMovement()->GetWalkableFloorAngle();
 	if (SurfaceAngleCheck < MaxFloorAngle) {
 		return true;
@@ -274,12 +304,26 @@ bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 	
 }
 
+void AWRC_WallRunBase::Normalize(FVector Input, float Tolerance, FVector& Output) const 
+{
+	Input.GetSafeNormal(Tolerance);
+	Input.Normalize(Tolerance);
+	Output = Input;
+}
+
 FVector AWRC_WallRunBase::FindLaunchVelocity() const
 {
 	FVector LaunchDirection;
+	LaunchDirection.X = 0.0;
+	LaunchDirection.Y = 0.0;
+	LaunchDirection.Z = 0.0;
 	
 	if (WallRunningBool) {
 		FVector WallRunSideLocalZ;
+		
+		WallRunSideLocalZ.X = 0.0;
+		WallRunSideLocalZ.Y = 0.0;
+		
 		if (eWallRun == left) {
 			WallRunSideLocalZ.Z = 1.0;
 		}
@@ -295,13 +339,13 @@ FVector AWRC_WallRunBase::FindLaunchVelocity() const
 	}
 
 	LaunchDirection.Z += 1;
-	LaunchDirection *= GetCharacterMovement()->JumpZVelocity;
+	LaunchDirection = LaunchDirection * GetCharacterMovement()->JumpZVelocity;
 	return LaunchDirection;
 }
 
 bool AWRC_WallRunBase::AreRequiredKeysDown() const
 {
-	if (ForwardAxis < 0.1) {
+	if (ForwardAxis <= 0.1) {
 		return false;
 	}
 	
@@ -334,6 +378,7 @@ void AWRC_WallRunBase::UpdateWallRun()
 
 	if (!AreRequiredKeysDown()) {
 		EndWallRun(fell);
+		return;
 	}
 	
 	
@@ -350,12 +395,14 @@ void AWRC_WallRunBase::UpdateWallRun()
 
 	if (!ActorLineTraceSingle(OutHit, GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams)) {
 		EndWallRun(fell);
+		return;
 	}
 
 	FindRunDirectionAndSide(OutHit.ImpactNormal, FRDASVals);
 
 	if (!FRDASVals.Side == eWallRun) {
 		EndWallRun(fell);
+		return;
 	}
 
 	WallRunDirection = FRDASVals.Direction;
@@ -372,7 +419,7 @@ void AWRC_WallRunBase::ClampHorizontalVelocity()
 		float CharTime;
 		
 		CharVelocity = GetHorizontalVelocity();
-		CharTime = CharVelocity.Size() / GetCharacterMovement()->GetMaxSpeed();
+		CharTime = CharVelocity.Size() / GetCharacterMovement()->GetModifiedMaxSpeed();
 
 		if (CharTime > 1.0) {
 			SetHorizontalVelocity(GetHorizontalVelocity()/CharTime);

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Components/TimelineComponent.h"
+#include "GameFramework/Actor.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -26,6 +27,10 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 {
 	GENERATED_BODY()
 
+	/** Capsule Component: Used for collision*/
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+		UCapsuleComponent* CapsuleComp;
+
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 		USkeletalMeshComponent* Mesh1P;
@@ -44,6 +49,8 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 
 	/** Character movement component **/
 	UCharacterMovementComponent* CharacterMovementComponent;
+
+
 
 
 public:
@@ -83,7 +90,7 @@ public:
 
 	FVector WallRunDirection;
 
-	bool WallRunningBool;
+	bool WallRunningBool = false;
 
 	bool UpdateWallRunBool = false;
 
@@ -91,9 +98,9 @@ public:
 
 	int MaxJumps = 2;
 
-	float RightAxis;
+	float RightAxis = 0.0;
 
-	float ForwardAxis;
+	float ForwardAxis = 0.0;
 
 	enum WallRunSide{left, right};
 
@@ -140,13 +147,17 @@ public:
 
 	virtual void InputAxisMoveRight(float Val);
 
-	virtual void OnLanded(FVector2D Hit);
+	virtual void Landed
+	(
+		const FHitResult& Hit
+	);
 
 	virtual void InputActionJump();
 
 	virtual void ResetJump(int jumps);
 
-	virtual void OnComponentHit(FVector HitImpactNormal);
+	UFUNCTION()
+	virtual void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	virtual void BeginWallRun();
 
@@ -166,6 +177,8 @@ public:
 	virtual void FindRunDirectionAndSide(FVector WallNormal, FRDASVals& returnVals) const;
 
 	virtual bool CanSurfaceWallBeRan(FVector SurfaceNormal) const;
+
+	virtual void Normalize(FVector Input, float Tolerance, FVector& Output) const;
 
 	virtual FVector FindLaunchVelocity() const;
 	
