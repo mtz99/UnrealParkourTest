@@ -11,6 +11,9 @@
 #include "Components/TimelineComponent.h"
 #include "iostream"
 
+
+
+PRAGMA_DISABLE_OPTIMIZATION
 // Sets default values
 AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	:Super(ObjectInitalizer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -51,6 +54,8 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	Mesh1P->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
 	Mesh1P->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
 
+
+#if 0
 	// Create a gun mesh component
 	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
 	FP_Gun->SetOnlyOwnerSee(false);			// otherwise won't be visible in the multiplayer
@@ -65,14 +70,42 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 	// Default offset from the character location for projectiles to spawn
 	GunOffset = FVector(100.0f, 0.0f, 10.0f);
+#endif
+
+	// Set the original player controller rotation
+	PlayerCOriginalRotation.Roll = GetControlRotation().Roll;
+	PlayerCOriginalRotation.Pitch = GetControlRotation().Pitch;
+	PlayerCOriginalRotation.Yaw = GetControlRotation().Yaw;
 }
 
 void AWRC_WallRunBase::TimelineProgress(float Value)
 {
-	FVector NewLocation = FMath::Lerp(StartLoc, EndLoc, Value);
-	SetActorLocation(NewLocation);
+	float CamRollMultiplier;
+	if (eWallRun == left)
+		CamRollMultiplier = -1.0;
+	else
+		CamRollMultiplier = 1.0;
 
-	
+
+	FRotator NewActorRotation;
+	NewActorRotation.Roll = Value * CamRollMultiplier;
+
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::SanitizeFloat(NewActorRotation.Roll)); } //Debug for cam rotation.
+	NewActorRotation.Pitch = YPitch;
+	NewActorRotation.Yaw = ZYaw;
+
+	//Sets the player's controller to new rotation
+	if (Controller != nullptr)
+		Controller->SetControlRotation(NewActorRotation);
+}
+
+void AWRC_WallRunBase::ResetPlayerCRotation()
+{
+	FOnTimelineEvent clearBind;
+	PlayerCOriginalRotation.Pitch = GetControlRotation().Pitch;
+	PlayerCOriginalRotation.Yaw = GetControlRotation().Yaw;
+	Controller->SetControlRotation(PlayerCOriginalRotation);
+	CurveTimeline.SetTimelineFinishedFunc(clearBind);
 }
 
 // Called when the game starts or when spawned
@@ -88,22 +121,12 @@ void AWRC_WallRunBase::BeginPlay()
 	WallRunDirection.Y = 0.0;
 	WallRunDirection.Z = 0.0;
 	
-
-#if 0
-	//Timeline demo
-	if (CurveFloat) {
-		FOnTimelineFloat TimelineProgress;
-		TimelineProgress.BindUFunction(this, FName("TimelineProgress"));
-		CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
-		CurveTimeline.SetLooping(true);
-
-		StartLoc = EndLoc = GetActorLocation();
-		EndLoc.Z += ZOffset;
-
-		CurveTimeline.PlayFromStart();
-	}
-#endif
-
+	//Create timeline to handle camera tilt.
+	FOnTimelineFloat TimelineProgress;
+	TimelineProgress.BindDynamic(this, &AWRC_WallRunBase::TimelineProgress);
+	CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
+	CurveTimeline.SetLooping(false);
+	
 }
 
 void AWRC_WallRunBase::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -133,16 +156,18 @@ void AWRC_WallRunBase::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
 {
+	ForwardAxis = Val;
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Forward %f"), ForwardAxis)); }
 	if (Val != 0.0f) {
-		ForwardAxis = Val;
 		AddMovementInput(FirstPersonCameraComponent->GetForwardVector(), ForwardAxis);
 	}
 }
 
 void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 {
+	RightAxis = Val;
+	
 	if (Val != 0.0f) {
-		RightAxis = Val;
 		AddMovementInput(FirstPersonCameraComponent->GetRightVector(), RightAxis);
 	}
 }
@@ -195,7 +220,11 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 				{
 					FindRunDirectionAndSide(ImpactNormal, returnVals);
 
-					WallRunDirection = returnVals.Direction;
+
+					//Don't forget to reset these values back to original state once you land on the ground.
+
+					
+ 					WallRunDirection = returnVals.Direction;
 					eWallRun = returnVals.Side;
 
 					if (AreRequiredKeysDown()) {
@@ -240,25 +269,52 @@ void AWRC_WallRunBase::EndWallRun(StopReason reason)
 	EndCameraTilt();
 
 	UpdateWallRunBool = false;
+
+	//Binded function to reset player rotation
+	FOnTimelineEvent ResetDelegate;
+	ResetDelegate.BindDynamic(this, &AWRC_WallRunBase::ResetPlayerCRotation);
+
+	CurveTimeline.SetTimelineFinishedFunc(ResetDelegate);
 }
+
+
+
+
 
 void AWRC_WallRunBase::BeginCameraTilt()
 {
+	if (CurveFloat) {
+		XRoll = GetControlRotation().Roll;
+		YPitch = GetControlRotation().Pitch;
+		ZYaw = GetControlRotation().Yaw;
+
+		CurveTimeline.PlayFromStart();
+	}
 }
+
 
 void AWRC_WallRunBase::EndCameraTilt()
 {
+	if (CurveFloat) {
+		XRoll = GetControlRotation().Roll;
+		YPitch = GetControlRotation().Pitch;
+		ZYaw = GetControlRotation().Yaw;
+
+		CurveTimeline.Reverse(); 
+		//After reversing rotation, send a signal to say it's done and then manually set rotation back to inital vals.
+	}
 }
 
 void AWRC_WallRunBase::FindRunDirectionAndSide(FVector WallNormal, FRDASVals& returnVals) const
 {
 	WallRunSide localSide;
 	FVector localVector;
+	FVector rightVector = GetActorRightVector();
 
 	localVector.X = 0.0;
 	localVector.Y = 0.0;
 
-	if (FVector::DotProduct(WallNormal, GetActorRightVector()) > 0) {
+	if (FVector::DotProduct(WallNormal.GetSafeNormal2D(), rightVector.GetSafeNormal2D()) > 0) {
 		localSide = right;
 		localVector.Z = 1;
 	}
@@ -274,16 +330,14 @@ void AWRC_WallRunBase::FindRunDirectionAndSide(FVector WallNormal, FRDASVals& re
 
 bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 {
-	FVector NormalizedSNVector;
 	float SurfaceAngleCheck;
-	float MaxFloorAngle;
 	if (SurfaceNormal.Z < -0.05) {
 		return false;
 	}
 
-	Normalize(SurfaceNormal, 0.0001, NormalizedSNVector);
+	FVector NormalizedSNVector = SurfaceNormal.GetSafeNormal2D(0.0001);
 
-#if 0
+#if 0 //Old surface normal code
 	if (SurfaceNormal.FVector::Normalize(0.0001)) {
 		NormalizedSNVector = SurfaceNormal;
 	}
@@ -295,8 +349,8 @@ bool AWRC_WallRunBase::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 #endif
 
 
-	SurfaceAngleCheck = (acos(NormalizedSNVector.DotProduct(NormalizedSNVector, SurfaceNormal)) * 180) / 3.14159;
-	MaxFloorAngle = GetCharacterMovement()->GetWalkableFloorAngle();
+	SurfaceAngleCheck = FMath::RadiansToDegrees(FMath::Acos(NormalizedSNVector.DotProduct(NormalizedSNVector, SurfaceNormal)));
+	float MaxFloorAngle = GetCharacterMovement()->GetWalkableFloorAngle();
 	if (SurfaceAngleCheck < MaxFloorAngle) {
 		return true;
 	}
@@ -310,6 +364,7 @@ void AWRC_WallRunBase::Normalize(FVector Input, float Tolerance, FVector& Output
 	Input.Normalize(Tolerance);
 	Output = Input;
 }
+
 
 FVector AWRC_WallRunBase::FindLaunchVelocity() const
 {
@@ -340,6 +395,7 @@ FVector AWRC_WallRunBase::FindLaunchVelocity() const
 
 	LaunchDirection.Z += 1;
 	LaunchDirection = LaunchDirection * GetCharacterMovement()->JumpZVelocity;
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::SanitizeFloat(LaunchDirection.X)); }
 	return LaunchDirection;
 }
 
@@ -436,6 +492,8 @@ void AWRC_WallRunBase::Tick(float DeltaTime)
 	if (UpdateWallRunBool) {
 		UpdateWallRun();
 	}
+
+	CurveTimeline.TickTimeline(DeltaTime);
 		
 }
 
@@ -448,3 +506,4 @@ void AWRC_WallRunBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 }
 #endif
 
+PRAGMA_ENABLE_OPTIMIZATION

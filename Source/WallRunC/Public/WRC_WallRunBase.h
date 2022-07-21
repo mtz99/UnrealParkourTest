@@ -26,7 +26,7 @@ UCLASS()
 class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 {
 	GENERATED_BODY()
-
+		
 	/** Capsule Component: Used for collision*/
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 		UCapsuleComponent* CapsuleComp;
@@ -85,7 +85,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		uint8 bUsingMotionControllers : 1;
 
-
+	//Player controller's original rotation
+	FRotator PlayerCOriginalRotation;
 
 
 	FVector WallRunDirection;
@@ -112,7 +113,9 @@ public:
 	//Blueprint timeline in C++
 	UFUNCTION()
 	void TimelineProgress(float Value);
-	
+
+	UFUNCTION()
+	void ResetPlayerCRotation();
 
 protected:
 	// Called when the game starts or when spawned
@@ -128,11 +131,11 @@ protected:
 	UCurveFloat* CurveFloat;
 
 	UPROPERTY()
-	FVector StartLoc;
+	float XRoll;
 	UPROPERTY()
-	FVector EndLoc;
+	float YPitch;
 	UPROPERTY()
-	float ZOffset;
+	float ZYaw;
 
 public:	
 	// Called every frame
