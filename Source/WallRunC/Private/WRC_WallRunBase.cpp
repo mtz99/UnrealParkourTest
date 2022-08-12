@@ -9,7 +9,11 @@
 #include "GameFramework/InputSettings.h"
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include "Components/TimelineComponent.h"
+#include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
+#include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "iostream"
+
+
 
 
 
@@ -213,6 +217,7 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
 	{
 		FVector ImpactNormal = Hit.ImpactNormal;
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
 		FRDASVals returnVals;
 		if (!WallRunningBool) {
 			if (CanSurfaceWallBeRan(ImpactNormal)) {
@@ -220,7 +225,7 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 				{
 					FindRunDirectionAndSide(ImpactNormal, returnVals);
 
-
+					
 					//Don't forget to reset these values back to original state once you land on the ground.
 
 					
@@ -301,7 +306,7 @@ void AWRC_WallRunBase::EndCameraTilt()
 		ZYaw = GetControlRotation().Yaw;
 
 		CurveTimeline.Reverse(); 
-		//After reversing rotation, send a signal to say it's done and then manually set rotation back to inital vals.
+		//Within the timeline's reverse function, a signal is sent out to say when the curve is done playing.
 	}
 }
 
@@ -431,29 +436,40 @@ void AWRC_WallRunBase::UpdateWallRun()
 	FVector TraceEnd;
 	FCollisionQueryParams CollisionParams;
 	FRDASVals FRDASVals;
+	
 
 	if (!AreRequiredKeysDown()) {
 		EndWallRun(fell);
 		return;
 	}
-	
-	
 
-	FVector WallRunSideLocalZ;
+	float multiplyVal;
+	/*FVector WallRunSideLocalZ;*/
 	if (eWallRun == left) {
-		WallRunSideLocalZ.Z = -1.0;
+		multiplyVal = -200.0f;
 	}
 	else {
-		WallRunSideLocalZ.Z = 1.0;
+		multiplyVal = 200.0f;
+		
 	}
+	TraceEnd = GetActorLocation() + (FVector::CrossProduct(WallRunDirection, FVector::UpVector) * multiplyVal);
+	
+	
+	
 
-	TraceEnd = GetActorLocation() + (FVector::CrossProduct(WallRunDirection, WallRunSideLocalZ) * 200);
+	bool TraceHit = ActorLineTraceSingle(OutHit, GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
+	//Trace debug stuff
+	//DrawDebugLine(GetWorld(), GetActorLocation(), TraceEnd, FColor::Red, false, 100.0f);
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
 
-	if (!ActorLineTraceSingle(OutHit, GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams)) {
+	
+
+	if (!TraceHit) {
+		//Appears that trace hit always hits, but doesn't detect when it's not hitting an object.
 		EndWallRun(fell);
 		return;
 	}
-
+	
 	FindRunDirectionAndSide(OutHit.ImpactNormal, FRDASVals);
 
 	if (!FRDASVals.Side == eWallRun) {
@@ -462,10 +478,12 @@ void AWRC_WallRunBase::UpdateWallRun()
 	}
 
 	WallRunDirection = FRDASVals.Direction;
-	
+
 	GetCharacterMovement()->Velocity.X = WallRunDirection.X * GetCharacterMovement()->GetMaxSpeed();
 	GetCharacterMovement()->Velocity.Y = WallRunDirection.Y * GetCharacterMovement()->GetMaxSpeed();
 	GetCharacterMovement()->Velocity.Z = 0.0;
+	
+	
 }
 
 void AWRC_WallRunBase::ClampHorizontalVelocity()
@@ -494,6 +512,11 @@ void AWRC_WallRunBase::Tick(float DeltaTime)
 	}
 
 	CurveTimeline.TickTimeline(DeltaTime);
+
+	
+
+	
+
 		
 }
 
