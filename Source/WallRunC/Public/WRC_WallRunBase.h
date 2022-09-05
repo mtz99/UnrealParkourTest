@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Components/TimelineComponent.h"
+
 #include "GameFramework/Actor.h"
 
 #include "CoreMinimal.h"
@@ -21,15 +21,10 @@ class UCurveFloat;
 
 #define OnWall(execute), (true, false)
 
-
 UCLASS()
 class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 {
 	GENERATED_BODY()
-		
-	/** Capsule Component: Used for collision*/
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-		UCapsuleComponent* CapsuleComp;
 
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -85,15 +80,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		uint8 bUsingMotionControllers : 1;
 
-	//Player controller's original rotation
-	FRotator PlayerCOriginalRotation;
+	
 
 
-	FVector WallRunDirection;
-
-	bool WallRunningBool = false;
-
-	bool UpdateWallRunBool = false;
+	
 
 	int JumpsLeft = 0;
 
@@ -103,16 +93,10 @@ public:
 
 	float ForwardAxis = 0.0;
 
-	enum WallRunSide{left, right};
+	
 
-	enum StopReason {fell, jumped};
-
-	WallRunSide eWallRun = left;
-
-
-	//Blueprint timeline in C++
-	UFUNCTION()
-	void TimelineProgress(float Value);
+	//Player controller's original rotation
+	FRotator PlayerCOriginalRotation;
 
 	UFUNCTION()
 	void ResetPlayerCRotation();
@@ -125,10 +109,7 @@ protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
 
-	//Blueprint timeline in C++
-	FTimeline CurveTimeline;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-	UCurveFloat* CurveFloat;
+	
 
 	UPROPERTY()
 	float XRoll;
@@ -138,6 +119,21 @@ protected:
 	float ZYaw;
 
 public:	
+	
+	enum PlayerState {
+		STATE_IDLE,
+		STATE_JUMPONCE,
+		STATE_DOUBLEJUMP,
+		STATE_WALLRUN
+	};
+	
+	
+	virtual ~PlayerState();
+	virutal void handleInput(ACharacter& player, Input input);
+	virtual void Update(ACharacter& player);
+	
+	
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -145,6 +141,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 #endif
+	
+	
 	
 	virtual void InputAxisMoveForward(float Val);
 
@@ -159,39 +157,16 @@ public:
 
 	virtual void ResetJump(int jumps);
 
-	UFUNCTION()
-	virtual void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
-	virtual void BeginWallRun();
-
-	virtual void EndWallRun(StopReason reason);
-
-	virtual void BeginCameraTilt();
-
-	virtual void EndCameraTilt();
-
-
-
-	struct FRDASVals {
-		FVector Direction;
-		WallRunSide Side;
-	};
 	
-	virtual void FindRunDirectionAndSide(FVector WallNormal, FRDASVals& returnVals) const;
-
-	virtual bool CanSurfaceWallBeRan(FVector SurfaceNormal) const;
 
 	virtual void Normalize(FVector Input, float Tolerance, FVector& Output) const;
 
 	virtual FVector FindLaunchVelocity() const;
-	
-	virtual bool AreRequiredKeysDown() const;
+
 
 	virtual FVector2D GetHorizontalVelocity() const;
 
 	virtual void SetHorizontalVelocity(FVector2D HorizontalVelocity);
-
-	virtual void UpdateWallRun();
 
 	virtual void ClampHorizontalVelocity();
 
