@@ -6,7 +6,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "WRC_WallRunBase.h"
 #include "WallRun.generated.h"
 
 /**
@@ -15,8 +14,9 @@
 UCLASS()
 class WALLRUNC_API UWallRun : public UActorComponent
 {
+	GENERATED_BODY()
 private:
-	AWRC_WallRunBase* PlayerChar;
+	class AWRC_WallRunBase* PlayerChar;
 
 
 	FVector WallRunDirection;
@@ -32,7 +32,7 @@ private:
 	WallRunSide eWallRun = left;
 
 public:
-	GENERATED_BODY()
+	
 
 	virtual void BeginPlay() override;
 
@@ -48,22 +48,24 @@ public:
 	
 
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION()
-	virtual void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
-	virtual void InputActionJump();
+	void InputActionJump();
 	
-	virtual void BeginWallRun();
+	void BeginWallRun();
 
-	virtual void EndWallRun(StopReason reason);
+	void EndWallRun(StopReason reason);
 
-	virtual void UpdateWallRun();
+	void ResetPlayerCRotation();
 
-	virtual void BeginCameraTilt();
+	void UpdateWallRun();
 
-	virtual void EndCameraTilt();
+	void BeginCameraTilt();
+
+	void EndCameraTilt();
 
 	UFUNCTION()
 	void ResetTimeline();

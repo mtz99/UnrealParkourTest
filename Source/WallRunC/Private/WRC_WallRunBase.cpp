@@ -17,17 +17,20 @@
 
 
 
+
+
 PRAGMA_DISABLE_OPTIMIZATION
 // Sets default values
 AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	:Super(ObjectInitalizer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
+
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
-	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AWRC_WallRunBase::OnComponentHit);
+	
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
@@ -121,6 +124,35 @@ void AWRC_WallRunBase::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
 	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+}
+
+void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	//Character decides what state you're in.
+	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
+	{
+		FVector ImpactNormal = Hit.ImpactNormal;
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
+		if(!WallRunningBool)
+		{
+			if (CanSurfaceWallBeRan(ImpactNormal)) {
+
+				FRDASVals returnVals;
+				FindRunDirectionAndSide(ImpactNormal, returnVals);
+
+
+				//Don't forget to reset these values back to original state once you land on the ground.
+
+
+				WallRunDirection = returnVals.Direction;
+				eWallRun = returnVals.Side;
+
+				if (AreRequiredKeysDown()) {
+					BeginWallRun();
+				}
+			}
+		}
+	}
 }
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
@@ -226,12 +258,17 @@ void AWRC_WallRunBase::ClampHorizontalVelocity()
 		float CharTime;
 		
 		CharVelocity = GetHorizontalVelocity();
-		CharTime = CharVelocity.Size() / GetCharacterMovement()->GetModifiedMaxSpeed();
+		CharTime = CharVelocity.Size() / GetCharacterMovement()->GetMaxSpeed();
 
 		if (CharTime > 1.0) {
 			SetHorizontalVelocity(GetHorizontalVelocity()/CharTime);
 		}
 	}
+}
+
+void AWRC_WallRunBase::handleInput(ACharacter& player, PlayerState input)
+{
+	return void();
 }
 
 // Called every frame

@@ -1,20 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "WallRunC/Private/WRC_WallRunBase.cpp"
-
 #include "WallRunC/WallRunCProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
-#include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"`
-
-
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
+
+#include "WallRunC/Public/WRC_WallRunBase.h"
+
 #include "Components/TimelineComponent.h"
 #include "WallRun.h"
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
+
 
 
 
@@ -29,9 +28,11 @@ void UWallRun::BeginPlay()
 
 	//Create timeline to handle camera tilt.
 	FOnTimelineFloat TimelineProgress;
-	TimelineProgress.BindDynamic(this, &AWRC_WallRunBase::TimelineProgress);
+	TimelineProgress.BindDynamic(this, &UWallRun::TimelineProgress);
 	CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
 	CurveTimeline.SetLooping(false);
+
+	PlayerChar->GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &UWallRun::OnComponentHit);
 	
 }
 
@@ -48,12 +49,12 @@ void UWallRun::TimelineProgress(float Value)
 	NewActorRotation.Roll = Value * CamRollMultiplier;
 
 	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::SanitizeFloat(NewActorRotation.Roll)); } //Debug for cam rotation.
-	NewActorRotation.Pitch = YPitch;
-	NewActorRotation.Yaw = ZYaw;
+	NewActorRotation.Pitch = PlayerChar->YPitch;
+	NewActorRotation.Yaw = PlayerChar->ZYaw;
 
 	//Sets the player's controller to new rotation
-	if (Controller != nullptr)
-		Controller->SetControlRotation(NewActorRotation);
+	if (PlayerChar->Controller != nullptr)
+		PlayerChar->Controller->SetControlRotation(NewActorRotation);
 }
 
 void UWallRun::InputActionJump()
@@ -67,15 +68,15 @@ void UWallRun::InputActionJump()
 void UWallRun::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	
-
-	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
+	//Character decides what state you're in.
+	if ((OtherActor != NULL) && (OtherActor != PlayerChar) && (OtherComp != NULL))
 	{
 		FVector ImpactNormal = Hit.ImpactNormal;
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
 		FRDASVals returnVals;
 		if (!WallRunningBool) {
 			if (CanSurfaceWallBeRan(ImpactNormal)) {
-				if (PlayerChar->PlayerChar->GetCharacterMovement()->IsFalling())
+				if (PlayerChar->GetCharacterMovement()->IsFalling())
 				{
 					FindRunDirectionAndSide(ImpactNormal, returnVals);
 
@@ -116,10 +117,10 @@ void UWallRun::EndWallRun(StopReason reason)
 	PlaneNorm.Y = 0.0;
 	PlaneNorm.Z = 0.0;
 	if (reason == fell) {
-		WallResetJump(1);
+		PlayerChar->ResetJump(1);
 	}
 	else {
-		ResetJump(MaxJumps - 1);
+		PlayerChar->ResetJump(PlayerChar->MaxJumps - 1);
 	}
 	PlayerChar->GetCharacterMovement()->AirControl = 0.05;
 	PlayerChar->GetCharacterMovement()->GravityScale = 1.0;
@@ -132,9 +133,15 @@ void UWallRun::EndWallRun(StopReason reason)
 
 	//Binded function to reset player rotation
 	FOnTimelineEvent ResetDelegate;
+	
 	ResetDelegate.BindDynamic(this, &UWallRun::ResetPlayerCRotation);
 
 	CurveTimeline.SetTimelineFinishedFunc(ResetDelegate);
+}
+
+void UWallRun::ResetPlayerCRotation() 
+{
+	PlayerChar->ResetPlayerCRotation();
 }
 
 
@@ -161,12 +168,12 @@ void UWallRun::UpdateWallRun()
 		multiplyVal = 200.0f;
 
 	}
-	TraceEnd = GetActorLocation() + (FVector::CrossProduct(WallRunDirection, FVector::UpVector) * multiplyVal);
+	TraceEnd = PlayerChar->GetActorLocation() + (FVector::CrossProduct(WallRunDirection, FVector::UpVector) * multiplyVal);
 
 
 
 
-	bool TraceHit = ActorLineTraceSingle(OutHit, GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
+	bool TraceHit = PlayerChar->ActorLineTraceSingle(OutHit, PlayerChar->GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
 	//Trace debug stuff
 	//DrawDebugLine(GetWorld(), GetActorLocation(), TraceEnd, FColor::Red, false, 100.0f);
 	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
@@ -200,9 +207,9 @@ void UWallRun::UpdateWallRun()
 void UWallRun::BeginCameraTilt()
 {
 	if (CurveFloat) {
-		XRoll = GetControlRotation().Roll;
-		YPitch = GetControlRotation().Pitch;
-		ZYaw = GetControlRotation().Yaw;
+		PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
+		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
+		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
 
 		CurveTimeline.PlayFromStart();
 	}
@@ -212,9 +219,9 @@ void UWallRun::BeginCameraTilt()
 void UWallRun::EndCameraTilt()
 {
 	if (CurveFloat) {
-		XRoll = GetControlRotation().Roll;
-		YPitch = GetControlRotation().Pitch;
-		ZYaw = GetControlRotation().Yaw;
+		PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
+		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
+		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
 
 		CurveTimeline.Reverse();
 		//Within the timeline's reverse function, a signal is sent out to say when the curve is done playing.
@@ -225,14 +232,14 @@ void UWallRun::ResetTimeline()
 {
 	FOnTimelineEvent clearBind;
 	CurveTimeline.SetTimelineFinishedFunc(clearBind);
-	WRC_WallRunBase.ResetPlayerCRotation();
+	PlayerChar->ResetPlayerCRotation();
 }
 
 void UWallRun::FindRunDirectionAndSide(FVector WallNormal, FRDASVals& returnVals) const
 {
 	WallRunSide localSide;
 	FVector localVector;
-	FVector rightVector = GetActorRightVector();
+	FVector rightVector = PlayerChar->GetActorRightVector();
 
 	localVector.X = 0.0;
 	localVector.Y = 0.0;
@@ -272,8 +279,9 @@ bool UWallRun::CanSurfaceWallBeRan(FVector SurfaceNormal) const
 
 FVector UWallRun::FindLaunchVelocity() const {
 
+	FVector WallRunSideLocalZ;
 	if (WallRunningBool) {
-		FVector WallRunSideLocalZ;
+		
 
 		WallRunSideLocalZ.X = 0.0;
 		WallRunSideLocalZ.Y = 0.0;
@@ -285,25 +293,29 @@ FVector UWallRun::FindLaunchVelocity() const {
 			WallRunSideLocalZ.Z = -1.0;
 		}
 	}
-		
+	
+	return WallRunSideLocalZ;
 }
 
 bool UWallRun::AreRequiredKeysDown() const
 {
-	if (ForwardAxis <= 0.1) {
+	if (PlayerChar->ForwardAxis <= 0.1) {
 		return false;
 	}
 
 	if (eWallRun == left) {
-		return RightAxis > 0.1;
+		return PlayerChar->RightAxis > 0.1;
 	}
 	else {
-		return RightAxis < -0.1;
+		return PlayerChar->RightAxis < -0.1;
 	}
 }
 
 
-void UWallRun::Tick(float DeltaTime) {
+void UWallRun::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
+	
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
 	if (UpdateWallRunBool) {
 		UpdateWallRun();
 	}

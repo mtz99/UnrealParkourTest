@@ -2,7 +2,6 @@
 
 #pragma once
 
-
 #include "GameFramework/Actor.h"
 
 #include "CoreMinimal.h"
@@ -82,7 +81,12 @@ public:
 
 	
 
-
+	UPROPERTY()
+		float XRoll;
+	UPROPERTY()
+		float YPitch;
+	UPROPERTY()
+		float ZYaw;
 	
 
 	int JumpsLeft = 0;
@@ -111,12 +115,7 @@ protected:
 
 	
 
-	UPROPERTY()
-	float XRoll;
-	UPROPERTY()
-	float YPitch;
-	UPROPERTY()
-	float ZYaw;
+	
 
 public:	
 	
@@ -128,47 +127,47 @@ public:
 	};
 	
 	
-	virtual ~PlayerState();
-	virutal void handleInput(ACharacter& player, Input input);
-	virtual void Update(ACharacter& player);
+	void handleInput(ACharacter& player, PlayerState input);
+	void Update(ACharacter& player);
 	
 	
 	
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	void Tick(float DeltaTime) override;
 
 #if 0
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 #endif
 	
-	
-	
-	virtual void InputAxisMoveForward(float Val);
 
-	virtual void InputAxisMoveRight(float Val);
+	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	
+	void InputAxisMoveForward(float Val);
 
-	virtual void Landed
+	void InputAxisMoveRight(float Val);
+
+	void Landed
 	(
 		const FHitResult& Hit
 	);
 
-	virtual void InputActionJump();
+	void InputActionJump();
 
-	virtual void ResetJump(int jumps);
+	void ResetJump(int jumps);
 
 	
 
-	virtual void Normalize(FVector Input, float Tolerance, FVector& Output) const;
+	void Normalize(FVector Input, float Tolerance, FVector& Output) const;
 
-	virtual FVector FindLaunchVelocity() const;
+	FVector FindLaunchVelocity() const;
 
 
-	virtual FVector2D GetHorizontalVelocity() const;
+	FVector2D GetHorizontalVelocity() const;
 
-	virtual void SetHorizontalVelocity(FVector2D HorizontalVelocity);
+	void SetHorizontalVelocity(FVector2D HorizontalVelocity);
 
-	virtual void ClampHorizontalVelocity();
+	void ClampHorizontalVelocity();
 
 
 
