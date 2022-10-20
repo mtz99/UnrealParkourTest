@@ -50,12 +50,9 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UFUNCTION()
-	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
 	void InputActionJump();
 	
-	void BeginWallRun();
+	void BeginWallRun(FVector ImpactNormal);
 
 	void EndWallRun(StopReason reason);
 
@@ -74,6 +71,8 @@ public:
 		FVector Direction;
 		WallRunSide Side;
 	};
+
+
 
 	void FindRunDirectionAndSide(FVector WallNormal, FRDASVals& returnVals) const;
 

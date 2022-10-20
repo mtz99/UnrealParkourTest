@@ -19,6 +19,8 @@
 
 void UWallRun::BeginPlay()
 {
+	Super::BeginPlay();
+
 	//AWRC_WallRunBase* PlayerChar = UGameplayStatics::GetActorOfClass(GetWorld(), AWRC_WallRunBase::StaticClass());
 	PlayerChar = Cast<AWRC_WallRunBase>(this->GetOwner());
 
@@ -31,8 +33,6 @@ void UWallRun::BeginPlay()
 	TimelineProgress.BindDynamic(this, &UWallRun::TimelineProgress);
 	CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
 	CurveTimeline.SetLooping(false);
-
-	PlayerChar->GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &UWallRun::OnComponentHit);
 	
 }
 
@@ -65,40 +65,16 @@ void UWallRun::InputActionJump()
 }
 
 
-void UWallRun::OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void UWallRun::BeginWallRun(FVector ImpactNormal)
 {
+	FRDASVals returnVals;
+	FindRunDirectionAndSide(ImpactNormal, returnVals);
 	
-	//Character decides what state you're in.
-	if ((OtherActor != NULL) && (OtherActor != PlayerChar) && (OtherComp != NULL))
-	{
-		FVector ImpactNormal = Hit.ImpactNormal;
-		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
-		FRDASVals returnVals;
-		if (!WallRunningBool) {
-			if (CanSurfaceWallBeRan(ImpactNormal)) {
-				if (PlayerChar->GetCharacterMovement()->IsFalling())
-				{
-					FindRunDirectionAndSide(ImpactNormal, returnVals);
-
-
-					//Don't forget to reset these values back to original state once you land on the ground.
-
-
-					WallRunDirection = returnVals.Direction;
-					eWallRun = returnVals.Side;
-
-					if (AreRequiredKeysDown()) {
-						BeginWallRun();
-					}
-				}
-			}
-		}
-	}
-}
-
-
-void UWallRun::BeginWallRun()
-{
+	//Don't forget to reset these values back to original state once you land on the ground.
+	WallRunDirection = returnVals.Direction;
+	eWallRun = returnVals.Side;
+	
+	
 	FVector planeNormal;
 	planeNormal.Z = 1.0;
 	PlayerChar->GetCharacterMovement()->AirControl = 1.0f;
@@ -130,6 +106,9 @@ void UWallRun::EndWallRun(StopReason reason)
 	EndCameraTilt();
 
 	UpdateWallRunBool = false;
+
+	//Calls function to change state machine to falling (NOJUMPSLEFT).
+	PlayerChar->Falling();
 
 	//Binded function to reset player rotation
 	FOnTimelineEvent ResetDelegate;

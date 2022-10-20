@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "WRC_WallRunBase.h"
+
 #include "WallRunC/WallRunCProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
@@ -8,6 +9,8 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
+
+#include "WallRunC/Public/WallRun.h"
 
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
@@ -30,6 +33,7 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
+	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AWRC_WallRunBase::OnComponentHit);
 	
 
 	// set our turn rates for input
@@ -51,6 +55,8 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	Mesh1P->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
 	Mesh1P->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
 
+	//Create a wall run component
+	WallRunComp = CreateDefaultSubobject<UWallRun>(TEXT("WallRunComponent"));
 
 #if 0
 	// Create a gun mesh component
@@ -133,27 +139,25 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 	{
 		FVector ImpactNormal = Hit.ImpactNormal;
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
-		if(!WallRunningBool)
-		{
-			if (CanSurfaceWallBeRan(ImpactNormal)) {
-
-				FRDASVals returnVals;
-				FindRunDirectionAndSide(ImpactNormal, returnVals);
-
-
-				//Don't forget to reset these values back to original state once you land on the ground.
-
-
-				WallRunDirection = returnVals.Direction;
-				eWallRun = returnVals.Side;
-
-				if (AreRequiredKeysDown()) {
-					BeginWallRun();
-				}
-			}
+		if (CheckWallRun(ImpactNormal) && changeState(STATE_WALLRUN)) {
+			WallRunComp->BeginWallRun(ImpactNormal);
 		}
 	}
 }
+
+bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
+{
+	if (WallRunComp->CanSurfaceWallBeRan(ImpactNormal)) {
+		if (GetCharacterMovement()->IsFalling())
+		{
+			if (WallRunComp->AreRequiredKeysDown()) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
 {
@@ -173,21 +177,37 @@ void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 	}
 }
 
+void AWRC_WallRunBase::Falling()
+{
+	changeState(STATE_NOJUMPSLEFT);
+}
+
 void AWRC_WallRunBase::Landed(const FHitResult& Hit)
 {
 	ResetJump(MaxJumps);
+	changeState(STATE_IDLE);
 }
 
 void AWRC_WallRunBase::InputActionJump()
 {
-	if (JumpsLeft <= 0) {
-		return;
-	}
-	if (JumpsLeft > 0) {
+	if (changeState(STATE_JUMPONCE)||changeState(STATE_DOUBLEJUMP)) {
 		JumpsLeft -= 1;
+		LaunchCharacter(FindLaunchVelocity(), false, true);
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Forward %f"), ForwardAxis)); }
 	}
-	LaunchCharacter(FindLaunchVelocity(), false, true);
+	
 }
+
+void AWRC_WallRunBase::EndWallRun(bool FallReason) 
+{
+	if (FallReason) {
+		changeState(STATE_JUMPONCE);
+	}
+	else {
+		ResetJump(MaxJumps - 1);
+	}
+}
+
 
 void AWRC_WallRunBase::ResetJump(int jumps)
 {
@@ -266,9 +286,40 @@ void AWRC_WallRunBase::ClampHorizontalVelocity()
 	}
 }
 
-void AWRC_WallRunBase::handleInput(ACharacter& player, PlayerState input)
+bool AWRC_WallRunBase::changeState(PlayerState input)
 {
-	return void();
+	bool changeValid = false;
+
+	switch (input) {
+		//If there's no jumps left (or falling).	
+		case STATE_NOJUMPSLEFT:
+			changeValid = currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN;
+			break;
+		//Jump from idle, or set the character to "have jumped once" after falling off wall.
+		case STATE_JUMPONCE:
+			changeValid = currentState == STATE_IDLE || currentState == STATE_WALLRUN;
+			break;
+		//Jump a second time.
+		case STATE_DOUBLEJUMP:
+			changeValid = currentState == STATE_JUMPONCE;
+			break;
+		//Go to idle state from jumping once, double jump, or wall run, or no jumps left.
+		case STATE_IDLE:
+			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN || currentState == STATE_NOJUMPSLEFT;
+			break;
+		//Go to wall run state.
+		case STATE_WALLRUN:
+			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP;
+			break;
+	}
+	
+	if (changeValid)
+	{
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Current state, %d->, %d"), (int)currentState, (int)input)); }
+		currentState = input;
+	}
+	
+	return changeValid;
 }
 
 // Called every frame
@@ -276,12 +327,6 @@ void AWRC_WallRunBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	ClampHorizontalVelocity();
-
-	
-
-	
-
-		
 }
 
 #if 0

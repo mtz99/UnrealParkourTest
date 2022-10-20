@@ -105,6 +105,24 @@ public:
 	UFUNCTION()
 	void ResetPlayerCRotation();
 
+
+private:
+	
+	enum PlayerState {
+		STATE_IDLE,
+		STATE_JUMPONCE,
+		STATE_DOUBLEJUMP,
+		STATE_WALLRUN,
+		STATE_NOJUMPSLEFT
+	};
+
+	PlayerState currentState = STATE_IDLE;
+
+	UPROPERTY(EditAnywhere, Category = "WallRunComp")
+	class UWallRun* WallRunComp;
+
+
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -119,15 +137,9 @@ protected:
 
 public:	
 	
-	enum PlayerState {
-		STATE_IDLE,
-		STATE_JUMPONCE,
-		STATE_DOUBLEJUMP,
-		STATE_WALLRUN
-	};
 	
 	
-	void handleInput(ACharacter& player, PlayerState input);
+	bool changeState(PlayerState input);
 	void Update(ACharacter& player);
 	
 	
@@ -141,11 +153,16 @@ public:
 #endif
 	
 
+	UFUNCTION()
 	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	
+	bool CheckWallRun(FVector ImpactNormal);
 	
 	void InputAxisMoveForward(float Val);
 
 	void InputAxisMoveRight(float Val);
+
+	void Falling();
 
 	void Landed
 	(
@@ -156,6 +173,7 @@ public:
 
 	void ResetJump(int jumps);
 
+	void EndWallRun(bool FallReason);
 	
 
 	void Normalize(FVector Input, float Tolerance, FVector& Output) const;
@@ -168,12 +186,5 @@ public:
 	void SetHorizontalVelocity(FVector2D HorizontalVelocity);
 
 	void ClampHorizontalVelocity();
-
-
-
-
-	
-
-	
 	
 };
