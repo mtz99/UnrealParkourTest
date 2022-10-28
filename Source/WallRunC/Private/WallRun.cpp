@@ -15,7 +15,13 @@
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
 
 
+PRAGMA_DISABLE_OPTIMIZATION
 
+UWallRun::UWallRun(const FObjectInitializer& ObjectInitalizer)
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
+}
 
 void UWallRun::BeginPlay()
 {
@@ -35,6 +41,8 @@ void UWallRun::BeginPlay()
 	CurveTimeline.SetLooping(false);
 	
 }
+
+
 
 void UWallRun::TimelineProgress(float Value)
 {
@@ -64,8 +72,7 @@ void UWallRun::InputActionJump()
 	}
 }
 
-
-void UWallRun::BeginWallRun(FVector ImpactNormal)
+void UWallRun::SetEWallRun(FVector ImpactNormal)
 {
 	FRDASVals returnVals;
 	FindRunDirectionAndSide(ImpactNormal, returnVals);
@@ -73,8 +80,12 @@ void UWallRun::BeginWallRun(FVector ImpactNormal)
 	//Don't forget to reset these values back to original state once you land on the ground.
 	WallRunDirection = returnVals.Direction;
 	eWallRun = returnVals.Side;
-	
-	
+}
+
+
+void UWallRun::BeginWallRun()
+{
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Begin Wall Run."))); }
 	FVector planeNormal;
 	planeNormal.Z = 1.0;
 	PlayerChar->GetCharacterMovement()->AirControl = 1.0f;
@@ -82,12 +93,12 @@ void UWallRun::BeginWallRun(FVector ImpactNormal)
 	PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
 	WallRunningBool = true;
 	BeginCameraTilt();
-	UpdateWallRunBool = true;
-
 }
 
 void UWallRun::EndWallRun(StopReason reason)
 {
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("End Wall Run."))); }
+
 	FVector PlaneNorm;
 	PlaneNorm.X = 0.0;
 	PlaneNorm.Y = 0.0;
@@ -101,11 +112,13 @@ void UWallRun::EndWallRun(StopReason reason)
 	PlayerChar->GetCharacterMovement()->AirControl = 0.05;
 	PlayerChar->GetCharacterMovement()->GravityScale = 1.0;
 	PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(PlaneNorm);
+	
+	//Resetting all set variables to original state.
 	WallRunningBool = false;
+	WallRunDirection = FVector::ZeroVector;
+	eWallRun = left;
 
 	EndCameraTilt();
-
-	UpdateWallRunBool = false;
 
 	//Calls function to change state machine to falling (NOJUMPSLEFT).
 	PlayerChar->Falling();
@@ -134,6 +147,7 @@ void UWallRun::UpdateWallRun()
 
 
 	if (!AreRequiredKeysDown()) {
+		
 		EndWallRun(fell);
 		return;
 	}
@@ -167,12 +181,14 @@ void UWallRun::UpdateWallRun()
 
 	FindRunDirectionAndSide(OutHit.ImpactNormal, FRDASVals);
 
-	if (!FRDASVals.Side == eWallRun) {
+	if (FRDASVals.Side != eWallRun) {
 		EndWallRun(fell);
 		return;
 	}
 
 	WallRunDirection = FRDASVals.Direction;
+
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunDirection:%f, %f,"), WallRunDirection.X, WallRunDirection.Y)); }
 
 	PlayerChar->GetCharacterMovement()->Velocity.X = WallRunDirection.X * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
 	PlayerChar->GetCharacterMovement()->Velocity.Y = WallRunDirection.Y * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
@@ -295,9 +311,11 @@ void UWallRun::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorCo
 	
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (UpdateWallRunBool) {
+	if (WallRunningBool) {
 		UpdateWallRun();
 	}
 
 	CurveTimeline.TickTimeline(DeltaTime);
 }
+
+PRAGMA_ENABLE_OPTIMIZATION

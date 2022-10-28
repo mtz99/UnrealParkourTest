@@ -138,9 +138,11 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComp != NULL))
 	{
 		FVector ImpactNormal = Hit.ImpactNormal;
+
+		WallRunComp->SetEWallRun(ImpactNormal);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
 		if (CheckWallRun(ImpactNormal) && changeState(STATE_WALLRUN)) {
-			WallRunComp->BeginWallRun(ImpactNormal);
+			WallRunComp->BeginWallRun();
 		}
 	}
 }
@@ -150,6 +152,12 @@ bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
 	if (WallRunComp->CanSurfaceWallBeRan(ImpactNormal)) {
 		if (GetCharacterMovement()->IsFalling())
 		{
+			//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, WallRunComp->AreRequiredKeysDown() ? "True" : "False"); }
+			
+			/*FString debugMsg = FString::Printf(TEXT("WallRun: %d Forward %.2f Right: %.2f"), WallRunComp->AreRequiredKeysDown(), ForwardAxis, RightAxis);
+			if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, *debugMsg); }*/
+
+			
 			if (WallRunComp->AreRequiredKeysDown()) {
 				return true;
 			}
@@ -201,7 +209,7 @@ void AWRC_WallRunBase::InputActionJump()
 void AWRC_WallRunBase::EndWallRun(bool FallReason) 
 {
 	if (FallReason) {
-		changeState(STATE_JUMPONCE);
+		Falling();
 	}
 	else {
 		ResetJump(MaxJumps - 1);
@@ -315,7 +323,7 @@ bool AWRC_WallRunBase::changeState(PlayerState input)
 	
 	if (changeValid)
 	{
-		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Current state, %d->, %d"), (int)currentState, (int)input)); }
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Current state, %d->, %d"), (int)currentState, (int)input)); }
 		currentState = input;
 	}
 	

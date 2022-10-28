@@ -23,8 +23,6 @@ private:
 
 	bool WallRunningBool = false;
 
-	bool UpdateWallRunBool = false;
-
 	enum WallRunSide { left, right };
 
 	enum StopReason { fell, jumped };
@@ -33,6 +31,7 @@ private:
 
 public:
 	
+	UWallRun(const FObjectInitializer& ObjectInitalizer);
 
 	virtual void BeginPlay() override;
 
@@ -52,10 +51,13 @@ public:
 
 	void InputActionJump();
 	
-	void BeginWallRun(FVector ImpactNormal);
+	void SetEWallRun(FVector ImpactNormal);
+	
+	void BeginWallRun();
 
 	void EndWallRun(StopReason reason);
 
+	UFUNCTION()
 	void ResetPlayerCRotation();
 
 	void UpdateWallRun();
