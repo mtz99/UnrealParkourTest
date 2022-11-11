@@ -8,11 +8,13 @@
 #include "GameFramework/InputSettings.h"
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 
+#include "DrawDebugHelpers.h"
 #include "WallRunC/Public/WRC_WallRunBase.h"
 
 #include "Components/TimelineComponent.h"
 #include "WallRun.h"
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
+
 
 
 PRAGMA_DISABLE_OPTIMIZATION
@@ -83,6 +85,9 @@ void UWallRun::SetEWallRun(FVector ImpactNormal)
 }
 
 
+//Camera tilt could either be state mgmt issue or unknown flag I don't know of, or maybe I need to recreate timeline everytime?
+//Maybe there's a reset function for timeline.
+
 void UWallRun::BeginWallRun()
 {
 	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Begin Wall Run."))); }
@@ -90,7 +95,7 @@ void UWallRun::BeginWallRun()
 	planeNormal.Z = 1.0;
 	PlayerChar->GetCharacterMovement()->AirControl = 1.0f;
 	PlayerChar->GetCharacterMovement()->GravityScale = 0.0f;
-	PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
+	//PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
 	WallRunningBool = true;
 	BeginCameraTilt();
 }
@@ -111,7 +116,7 @@ void UWallRun::EndWallRun(StopReason reason)
 	}
 	PlayerChar->GetCharacterMovement()->AirControl = 0.05;
 	PlayerChar->GetCharacterMovement()->GravityScale = 1.0;
-	PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(PlaneNorm);
+	//PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(PlaneNorm);
 	
 	//Resetting all set variables to original state.
 	WallRunningBool = false;
@@ -143,6 +148,7 @@ void UWallRun::UpdateWallRun()
 	FHitResult OutHit;
 	FVector TraceEnd;
 	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(PlayerChar);
 	FRDASVals FRDASVals;
 
 
@@ -161,15 +167,16 @@ void UWallRun::UpdateWallRun()
 		multiplyVal = 200.0f;
 
 	}
+
 	TraceEnd = PlayerChar->GetActorLocation() + (FVector::CrossProduct(WallRunDirection, FVector::UpVector) * multiplyVal);
 
 
 
 
-	bool TraceHit = PlayerChar->ActorLineTraceSingle(OutHit, PlayerChar->GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
+	bool TraceHit = GetWorld()->LineTraceSingleByChannel(OutHit, PlayerChar->GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
 	//Trace debug stuff
-	//DrawDebugLine(GetWorld(), GetActorLocation(), TraceEnd, FColor::Red, false, 100.0f);
-	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
+	DrawDebugLine(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceHit ? FColor::Green : FColor::Red, false, 100.0f);
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
 
 
 
@@ -188,13 +195,20 @@ void UWallRun::UpdateWallRun()
 
 	WallRunDirection = FRDASVals.Direction;
 
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunDirection:%f, %f,"), WallRunDirection.X, WallRunDirection.Y)); }
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunDirection:%f, %f,"), WallRunDirection.X, WallRunDirection.Y)); }
+
+#if 0
+	if (GEngine) {
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunVelocity:%f, %f, %f,"),
+			PlayerChar->GetCharacterMovement()->Velocity.X,
+			PlayerChar->GetCharacterMovement()->Velocity.Y,
+			PlayerChar->GetCharacterMovement()->Velocity.Z));
+	}
+#endif
 
 	PlayerChar->GetCharacterMovement()->Velocity.X = WallRunDirection.X * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
 	PlayerChar->GetCharacterMovement()->Velocity.Y = WallRunDirection.Y * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
 	PlayerChar->GetCharacterMovement()->Velocity.Z = 0.0;
-
-
 }
 
 

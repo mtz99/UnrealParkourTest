@@ -335,6 +335,7 @@ void AWRC_WallRunBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	ClampHorizontalVelocity();
+
 }
 
 #if 0
