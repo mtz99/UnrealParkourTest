@@ -305,7 +305,7 @@ bool AWRC_WallRunBase::changeState(PlayerState input)
 			break;
 		//Jump from idle, or set the character to "have jumped once" after falling off wall.
 		case STATE_JUMPONCE:
-			changeValid = currentState == STATE_IDLE || currentState == STATE_WALLRUN;
+			changeValid = currentState == STATE_IDLE;
 			break;
 		//Jump a second time.
 		case STATE_DOUBLEJUMP:
@@ -317,7 +317,7 @@ bool AWRC_WallRunBase::changeState(PlayerState input)
 			break;
 		//Go to wall run state.
 		case STATE_WALLRUN:
-			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP;
+			changeValid = currentState == STATE_JUMPONCE;
 			break;
 	}
 	

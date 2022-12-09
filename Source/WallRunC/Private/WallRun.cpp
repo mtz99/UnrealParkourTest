@@ -41,6 +41,7 @@ void UWallRun::BeginPlay()
 	TimelineProgress.BindDynamic(this, &UWallRun::TimelineProgress);
 	CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
 	CurveTimeline.SetLooping(false);
+
 	
 }
 
@@ -55,6 +56,8 @@ void UWallRun::TimelineProgress(float Value)
 		CamRollMultiplier = 1.0;
 
 
+	//Rotation issue is related to gimbal lock, try figuring out another way to rotate the camera (e.g. Quarternion, look at blueprints, etc.)
+	
 	FRotator NewActorRotation;
 	NewActorRotation.Roll = Value * CamRollMultiplier;
 
@@ -90,7 +93,10 @@ void UWallRun::SetEWallRun(FVector ImpactNormal)
 
 void UWallRun::BeginWallRun()
 {
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Begin Wall Run."))); }
+	//Clearing all reset delegates.
+	CurveTimeline.SetTimelineFinishedFunc(FOnTimelineEvent());
+
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Begin Wall Run."))); }
 	FVector planeNormal;
 	planeNormal.Z = 1.0;
 	PlayerChar->GetCharacterMovement()->AirControl = 1.0f;
@@ -102,7 +108,7 @@ void UWallRun::BeginWallRun()
 
 void UWallRun::EndWallRun(StopReason reason)
 {
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("End Wall Run."))); }
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("End Wall Run."))); }
 
 	FVector PlaneNorm;
 	PlaneNorm.X = 0.0;
@@ -118,12 +124,12 @@ void UWallRun::EndWallRun(StopReason reason)
 	PlayerChar->GetCharacterMovement()->GravityScale = 1.0;
 	//PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(PlaneNorm);
 	
+	EndCameraTilt();
+	
 	//Resetting all set variables to original state.
 	WallRunningBool = false;
 	WallRunDirection = FVector::ZeroVector;
 	eWallRun = left;
-
-	EndCameraTilt();
 
 	//Calls function to change state machine to falling (NOJUMPSLEFT).
 	PlayerChar->Falling();
@@ -175,8 +181,8 @@ void UWallRun::UpdateWallRun()
 
 	bool TraceHit = GetWorld()->LineTraceSingleByChannel(OutHit, PlayerChar->GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
 	//Trace debug stuff
-	DrawDebugLine(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceHit ? FColor::Green : FColor::Red, false, 100.0f);
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
+	//DrawDebugLine(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceHit ? FColor::Green : FColor::Red, false, 100.0f);
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
 
 
 
@@ -220,6 +226,8 @@ void UWallRun::BeginCameraTilt()
 		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
 		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
 
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, CurveTimeline.IsPlaying() ? "True" : "False"); }
+
 		CurveTimeline.PlayFromStart();
 	}
 }
@@ -232,7 +240,8 @@ void UWallRun::EndCameraTilt()
 		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
 		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
 
-		CurveTimeline.Reverse();
+		CurveTimeline.ReverseFromEnd();
+		
 		//Within the timeline's reverse function, a signal is sent out to say when the curve is done playing.
 	}
 }
