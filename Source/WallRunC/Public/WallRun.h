@@ -29,6 +29,8 @@ private:
 
 	WallRunSide eWallRun = left;
 
+	float prevRotatorValue = 0;
+
 public:
 	
 	UWallRun(const FObjectInitializer& ObjectInitalizer);

@@ -49,25 +49,44 @@ void UWallRun::BeginPlay()
 
 void UWallRun::TimelineProgress(float Value)
 {
-	float CamRollMultiplier;
+	/*float CamRollMultiplier;
 	if (eWallRun == left)
 		CamRollMultiplier = -1.0;
 	else
-		CamRollMultiplier = 1.0;
+		CamRollMultiplier = 1.0;*/
+
 
 
 	//Rotation issue is related to gimbal lock, try figuring out another way to rotate the camera (e.g. Quarternion, look at blueprints, etc.)
 	
-	FRotator NewActorRotation;
-	NewActorRotation.Roll = Value * CamRollMultiplier;
+	FQuat CurrActorRotation;
+	
+	//NewActorRotation.X = Value * CamRollMultiplier;
+		
+	CurrActorRotation = PlayerChar->GetControlRotation().Quaternion();
+	FQuat NewActorRotation(PlayerChar->GetActorForwardVector(), FMath::DegreesToRadians((Value - prevRotatorValue)));
+
+	//NewActorRotation = CurrActorRotation * NewActorRotation;
 
 	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::SanitizeFloat(NewActorRotation.Roll)); } //Debug for cam rotation.
-	NewActorRotation.Pitch = PlayerChar->YPitch;
-	NewActorRotation.Yaw = PlayerChar->ZYaw;
 
+	
+	if (PlayerChar->Controller != nullptr) {
+		//Adjusted UpVector for the capsule
+		//PlayerChar->GetCapsuleComponent()->SetRelativeRotation(FRotationMatrix::MakeFromZX(PlayerChar->GetCapsuleComponent()->GetComponentLocation(), PlayerChar->GetCapsuleComponent()->GetForwardVector()).ToQuat());
+		//Add in X input rotation
+		PlayerChar->GetCapsuleComponent()->AddLocalRotation(FRotator(NewActorRotation));
+		//Set the control rotation using the capsules rotation
+		PlayerChar->Controller->SetControlRotation(PlayerChar->GetCapsuleComponent()->GetComponentRotation());
+	}
+	
+	prevRotatorValue = Value;
+
+#if 0
 	//Sets the player's controller to new rotation
 	if (PlayerChar->Controller != nullptr)
 		PlayerChar->Controller->SetControlRotation(NewActorRotation);
+#endif
 }
 
 void UWallRun::InputActionJump()
