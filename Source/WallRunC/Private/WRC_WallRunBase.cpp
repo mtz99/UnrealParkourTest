@@ -22,7 +22,7 @@
 
 
 
-PRAGMA_DISABLE_OPTIMIZATION
+//PRAGMA_DISABLE_OPTIMIZATION
 // Sets default values
 AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	:Super(ObjectInitalizer.SetDefaultSubobjectClass<UCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -313,17 +313,21 @@ bool AWRC_WallRunBase::changeState(PlayerState input)
 			break;
 		//Go to idle state from jumping once, double jump, or wall run, or no jumps left.
 		case STATE_IDLE:
-			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN || currentState == STATE_NOJUMPSLEFT;
+			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN || currentState == STATE_NOJUMPSLEFT || currentState == STATE_MANTLE;
 			break;
 		//Go to wall run state.
 		case STATE_WALLRUN:
+			changeValid = currentState == STATE_JUMPONCE;
+			break;
+		//Go to mantle state.
+		case STATE_MANTLE:
 			changeValid = currentState == STATE_JUMPONCE;
 			break;
 	}
 	
 	if (changeValid)
 	{
-		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Current state, %d->, %d"), (int)currentState, (int)input)); }
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Current state, %d->, %d"), (int)currentState, (int)input)); }
 		currentState = input;
 	}
 	
@@ -347,4 +351,4 @@ void AWRC_WallRunBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 }
 #endif
 
-PRAGMA_ENABLE_OPTIMIZATION
+//PRAGMA_ENABLE_OPTIMIZATION

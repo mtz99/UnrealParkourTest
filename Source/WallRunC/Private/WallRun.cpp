@@ -17,7 +17,7 @@
 
 
 
-PRAGMA_DISABLE_OPTIMIZATION
+//PRAGMA_DISABLE_OPTIMIZATION
 
 UWallRun::UWallRun(const FObjectInitializer& ObjectInitalizer)
 {
@@ -49,44 +49,31 @@ void UWallRun::BeginPlay()
 
 void UWallRun::TimelineProgress(float Value)
 {
+
+	//A multiplier of some type needs to be applied.
 	/*float CamRollMultiplier;
 	if (eWallRun == left)
 		CamRollMultiplier = -1.0;
 	else
-		CamRollMultiplier = 1.0;*/
+		CamRollMultiplier = 1.0;
 
-
-
-	//Rotation issue is related to gimbal lock, try figuring out another way to rotate the camera (e.g. Quarternion, look at blueprints, etc.)
+	Value = Value * CamRollMultiplier;*/
 	
-	FQuat CurrActorRotation;
-	
-	//NewActorRotation.X = Value * CamRollMultiplier;
-		
-	CurrActorRotation = PlayerChar->GetControlRotation().Quaternion();
 	FQuat NewActorRotation(PlayerChar->GetActorForwardVector(), FMath::DegreesToRadians((Value - prevRotatorValue)));
 
-	//NewActorRotation = CurrActorRotation * NewActorRotation;
-
-	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::SanitizeFloat(NewActorRotation.Roll)); } //Debug for cam rotation.
-
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
 	
 	if (PlayerChar->Controller != nullptr) {
-		//Adjusted UpVector for the capsule
-		//PlayerChar->GetCapsuleComponent()->SetRelativeRotation(FRotationMatrix::MakeFromZX(PlayerChar->GetCapsuleComponent()->GetComponentLocation(), PlayerChar->GetCapsuleComponent()->GetForwardVector()).ToQuat());
-		//Add in X input rotation
+		//Add in input rotation
 		PlayerChar->GetCapsuleComponent()->AddLocalRotation(FRotator(NewActorRotation));
 		//Set the control rotation using the capsules rotation
 		PlayerChar->Controller->SetControlRotation(PlayerChar->GetCapsuleComponent()->GetComponentRotation());
 	}
+
+	
 	
 	prevRotatorValue = Value;
 
-#if 0
-	//Sets the player's controller to new rotation
-	if (PlayerChar->Controller != nullptr)
-		PlayerChar->Controller->SetControlRotation(NewActorRotation);
-#endif
 }
 
 void UWallRun::InputActionJump()
@@ -206,7 +193,6 @@ void UWallRun::UpdateWallRun()
 
 
 	if (!TraceHit) {
-		//Appears that trace hit always hits, but doesn't detect when it's not hitting an object.
 		EndWallRun(fell);
 		return;
 	}
@@ -245,7 +231,7 @@ void UWallRun::BeginCameraTilt()
 		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
 		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
 
-		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, CurveTimeline.IsPlaying() ? "True" : "False"); }
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, CurveTimeline.IsPlaying() ? "True" : "False"); }
 
 		CurveTimeline.PlayFromStart();
 	}
@@ -360,4 +346,4 @@ void UWallRun::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorCo
 	CurveTimeline.TickTimeline(DeltaTime);
 }
 
-PRAGMA_ENABLE_OPTIMIZATION
+//PRAGMA_ENABLE_OPTIMIZATION

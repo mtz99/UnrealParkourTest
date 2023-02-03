@@ -29,7 +29,7 @@ private:
 
 	WallRunSide eWallRun = left;
 
-	float prevRotatorValue = 0;
+	float prevRotatorValue = 0.0f;
 
 public:
 	
