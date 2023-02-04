@@ -29,7 +29,6 @@ void UWallRun::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//AWRC_WallRunBase* PlayerChar = UGameplayStatics::GetActorOfClass(GetWorld(), AWRC_WallRunBase::StaticClass());
 	PlayerChar = Cast<AWRC_WallRunBase>(this->GetOwner());
 
 	WallRunDirection.X = 0.0;

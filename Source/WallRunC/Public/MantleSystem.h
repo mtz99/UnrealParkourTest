@@ -12,6 +12,9 @@ class WALLRUNC_API UMantleSystem : public UActorComponent
 {
 	GENERATED_BODY()
 
+private:
+	class AWRC_WallRunBase* PlayerChar;
+
 public:	
 	// Sets default values for this component's properties
 	UMantleSystem();
@@ -24,5 +27,10 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	void LedgeCheck(UStaticMeshComponent GrabbableSurface);
+
+	void CharMovementSwitch(bool CharState);
+
+	void MoveChar();
 		
 };
