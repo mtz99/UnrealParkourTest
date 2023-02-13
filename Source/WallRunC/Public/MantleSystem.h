@@ -15,9 +15,14 @@ class WALLRUNC_API UMantleSystem : public UActorComponent
 private:
 	class AWRC_WallRunBase* PlayerChar;
 
+	
+
 public:	
 	// Sets default values for this component's properties
 	UMantleSystem();
+
+	UPROPERTY(EditAnywhere, Category = "Trace")
+	float TraceRadius = 500.0f;
 
 protected:
 	// Called when the game starts
@@ -32,5 +37,5 @@ public:
 	void CharMovementSwitch(bool CharState);
 
 	void MoveChar();
-		
+	
 };
