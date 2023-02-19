@@ -1,11 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include <Kismet/KismetSystemLibrary.h>
+#include "MantleSystem.h"
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include <WallRunC/Public/WRC_WallRunBase.h>
 
-#include "MantleSystem.h"
-#include <Runtime/Engine/Private/KismetSystemLibrary.cpp>
+
+
 
 
 
@@ -65,7 +66,7 @@ void UMantleSystem::LedgeCheck(UStaticMeshComponent GrabbableSurface)
 	
 	
 	const bool Hit = UKismetSystemLibrary::SphereTraceSingleByProfile(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceRadius, SocketNameType, 
-		UEngineTypes::ConvertToTraceType(ECC_Camera), ActorsToIgnore, EDrawDebugTrace::ForDuration, OutHit, true,
+		true, ActorsToIgnore, EDrawDebugTrace::ForDuration, OutHit, true,
 		FLinearColor::Gray, FLinearColor::Blue, 60.0f);
 	if (Hit) {
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Hit ? "True" : "False");
