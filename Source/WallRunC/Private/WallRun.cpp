@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "WallRun.h"
 #include "WallRunC/WallRunCProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
@@ -12,7 +13,7 @@
 #include "WallRunC/Public/WRC_WallRunBase.h"
 
 #include "Components/TimelineComponent.h"
-#include "WallRun.h"
+
 #include <Runtime/Engine/Classes/Kismet/GameplayStatics.h>
 
 
