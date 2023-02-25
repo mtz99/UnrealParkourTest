@@ -1,10 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include <Kismet/KismetSystemLibrary.h>
 #include "MantleSystem.h"
+#include <Kismet/KismetSystemLibrary.h>
+
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include <WallRunC/Public/WRC_WallRunBase.h>
-
 
 
 
@@ -43,34 +43,42 @@ void UMantleSystem::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 	// ...
 }
 
-void UMantleSystem::LedgeCheck(UStaticMeshComponent GrabbableSurface)
+bool UMantleSystem::LedgeCheck()
 {
 	//Local variables
-	FHitResult OutHit;
-	FVector TraceEnd = PlayerChar->GetActorLocation() + TraceRadius;
+	TArray<FHitResult> OutHit;
 	TArray <AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(PlayerChar->GetParentActor());
 
+	//Add profile name to this!!!
+	const bool Hit = UKismetSystemLibrary::SphereTraceMultiByProfile(GetWorld(), PlayerChar->GetActorLocation(), PlayerChar->GetActorLocation(), TraceRadius, " ", false, ActorsToIgnore,
+		EDrawDebugTrace::None, OutHit, true);
+	if (Hit) {
+		TArray<FTransform> Sockets;
+		for (int i = 0; i < OutHit.Num(); i++) {
+			if (OutHit[i].Actor->Implements<UGrabbableInterface>()) {
+				Sockets = IGrabbableInterface::Execute_GetSockets(OutHit[i].Actor.Get());
 
-	//Create predefined array of all socket names from grabbable surface and array which will store all sockets.
-	const TArray<FName> AllSocketNames = GrabbableSurface.GetAllSocketNames();
-	const FName SocketNameType = GrabbableSurface.GetFName();
-	
-	TArray<const UStaticMeshSocket*> AllSockets;
-	AllSockets.SetNum(AllSocketNames.Num());
-	
-	for (int32 SocketIdx = 0; SocketIdx <= AllSocketNames.Num(); ++SocketIdx)
-	{
-		AllSockets[SocketIdx] = GrabbableSurface.GetSocketByName(AllSocketNames[SocketIdx]);
+				for (int j = 0; j <= Sockets.Num(); j++) {
+					float CalcDistance = Sockets[j].GetLocation().Size() - PlayerChar->GetActorLocation().Size();
+					if (CalcDistance < MaxDistance) {
+						return true;
+					}
+				}
+			}
+		}
 	}
-	
-	
+
+	return false;
+#if 0
 	const bool Hit = UKismetSystemLibrary::SphereTraceSingleByProfile(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceRadius, SocketNameType, 
 		true, ActorsToIgnore, EDrawDebugTrace::ForDuration, OutHit, true,
 		FLinearColor::Gray, FLinearColor::Blue, 60.0f);
 	if (Hit) {
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Hit ? "True" : "False");
 	}
+
+#endif
 	
 
 
