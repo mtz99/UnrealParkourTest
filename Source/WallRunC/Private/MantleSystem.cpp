@@ -46,21 +46,20 @@ void UMantleSystem::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 bool UMantleSystem::LedgeCheck()
 {
 	//Local variables
-	TArray<FHitResult> OutHit;
+	TArray<FHitResult> OutHits;
 	TArray <AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(PlayerChar->GetParentActor());
 
-	//Add profile name to this!!!
-	const bool Hit = UKismetSystemLibrary::SphereTraceMultiByProfile(GetWorld(), PlayerChar->GetActorLocation(), PlayerChar->GetActorLocation(), TraceRadius, " ", false, ActorsToIgnore,
-		EDrawDebugTrace::None, OutHit, true);
+	const bool Hit = UKismetSystemLibrary::SphereTraceMultiByProfile(GetWorld(), PlayerChar->GetActorLocation(), PlayerChar->GetActorLocation(), TraceRadius, "Climbable", false, ActorsToIgnore,
+		EDrawDebugTrace::None, OutHits, true);
 	if (Hit) {
 		TArray<FTransform> Sockets;
-		for (int i = 0; i < OutHit.Num(); i++) {
-			if (OutHit[i].Actor->Implements<UGrabbableInterface>()) {
-				Sockets = IGrabbableInterface::Execute_GetSockets(OutHit[i].Actor.Get());
+		for (auto& OutHit:OutHits) {
+			if (OutHit.Actor->Implements<UGrabbableInterface>()) {
+				Sockets = IGrabbableInterface::Execute_GetSockets(OutHit.Actor.Get());
 
-				for (int j = 0; j <= Sockets.Num(); j++) {
-					float CalcDistance = Sockets[j].GetLocation().Size() - PlayerChar->GetActorLocation().Size();
+				for (auto& Socket:Sockets) {
+					float CalcDistance = Socket.GetLocation().Size() - PlayerChar->GetActorLocation().Size();
 					if (CalcDistance < MaxDistance) {
 						return true;
 					}
@@ -104,6 +103,9 @@ void UMantleSystem::CharMovementSwitch(bool CharState)
 
 void UMantleSystem::MoveChar()
 {
-
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("It's mantlin time!"))); }
+	
+	//When moving has finished:
+	PlayerChar->SetIdle();
 }
 

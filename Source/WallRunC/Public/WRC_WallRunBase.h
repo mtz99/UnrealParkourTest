@@ -122,6 +122,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "WallRunComp")
 	class UWallRun* WallRunComp;
 
+	UPROPERTY(EditAnywhere, Category = "MantleComp")
+	class UMantleSystem* MantleComp;
+
 
 
 protected:
@@ -158,6 +161,10 @@ public:
 	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 	
 	bool CheckWallRun(FVector ImpactNormal);
+
+	bool CheckMantle();
+
+	void SetIdle();
 	
 	void InputAxisMoveForward(float Val);
 

@@ -11,6 +11,7 @@
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 
 #include "WallRunC/Public/WallRun.h"
+#include "WallRunC/Public/MantleSystem.h"
 
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
@@ -57,6 +58,9 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 	//Create a wall run component
 	WallRunComp = CreateDefaultSubobject<UWallRun>(TEXT("WallRunComponent"));
+
+	//Create a mantle system component
+	MantleComp = CreateDefaultSubobject<UMantleSystem>(TEXT("MantleComponent"));
 
 #if 0
 	// Create a gun mesh component
@@ -144,6 +148,11 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 		if (CheckWallRun(ImpactNormal) && changeState(STATE_WALLRUN)) {
 			WallRunComp->BeginWallRun();
 		}
+
+		//For now also do a mantle check after jumping, but consider decoupling this check from this function.
+		if (CheckMantle() && changeState(STATE_MANTLE)) {
+			MantleComp->MoveChar();
+		}
 	}
 }
 
@@ -151,13 +160,7 @@ bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
 {
 	if (WallRunComp->CanSurfaceWallBeRan(ImpactNormal)) {
 		if (GetCharacterMovement()->IsFalling())
-		{
-			//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, WallRunComp->AreRequiredKeysDown() ? "True" : "False"); }
-			
-			/*FString debugMsg = FString::Printf(TEXT("WallRun: %d Forward %.2f Right: %.2f"), WallRunComp->AreRequiredKeysDown(), ForwardAxis, RightAxis);
-			if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, *debugMsg); }*/
-
-			
+		{	
 			if (WallRunComp->AreRequiredKeysDown()) {
 				return true;
 			}
@@ -166,6 +169,15 @@ bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
 	return false;
 }
 
+bool AWRC_WallRunBase::CheckMantle()
+{
+	return MantleComp->LedgeCheck();
+}
+
+void AWRC_WallRunBase::SetIdle()
+{
+	changeState(STATE_IDLE);
+}
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
 {
@@ -203,7 +215,11 @@ void AWRC_WallRunBase::InputActionJump()
 		LaunchCharacter(FindLaunchVelocity(), false, true);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Forward %f"), ForwardAxis)); }
 	}
-	
+
+	//Make sure the movechar isn't called twice!!!
+	if (CheckMantle() && changeState(STATE_MANTLE)) {
+		MantleComp->MoveChar();
+	}
 }
 
 void AWRC_WallRunBase::EndWallRun(bool FallReason) 
