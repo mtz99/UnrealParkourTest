@@ -101,10 +101,10 @@ void UMantleSystem::CharMovementSwitch(bool CharState)
 	}
 }
 
-void UMantleSystem::MoveChar()
+void UMantleSystem::MoveChar_Implementation()
 {
 	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("It's mantlin time!"))); }
-	
+
 	//When moving has finished:
 	PlayerChar->SetIdle();
 }

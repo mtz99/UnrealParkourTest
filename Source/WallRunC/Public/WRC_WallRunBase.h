@@ -18,6 +18,17 @@ class USoundBase;
 class UCurveFloat;
 
 
+UENUM(BlueprintType)
+enum class EPlayerState: uint8 {
+	STATE_IDLE,
+	STATE_JUMPONCE,
+	STATE_DOUBLEJUMP,
+	STATE_WALLRUN,
+	STATE_NOJUMPSLEFT,
+	STATE_MANTLE
+};
+
+
 #define OnWall(execute), (true, false)
 
 UCLASS()
@@ -26,7 +37,7 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 	GENERATED_BODY()
 
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Mesh, meta = (AllowPrivateAccess = "true"))
 		USkeletalMeshComponent* Mesh1P;
 
 	/** Gun mesh: 1st person view (seen only by self) */
@@ -108,22 +119,15 @@ public:
 
 private:
 	
-	enum PlayerState {
-		STATE_IDLE,
-		STATE_JUMPONCE,
-		STATE_DOUBLEJUMP,
-		STATE_WALLRUN,
-		STATE_NOJUMPSLEFT,
-		STATE_MANTLE
-	};
-
-	PlayerState currentState = STATE_IDLE;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), Category = "CharacterStateMachine")
+	EPlayerState currentState = EPlayerState::STATE_IDLE;
 
 	UPROPERTY(EditAnywhere, Category = "WallRunComp")
 	class UWallRun* WallRunComp;
 
-	UPROPERTY(EditAnywhere, Category = "MantleComp")
-	class UMantleSystem* MantleComp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess), Category = "MantleComp")
+	class UMantleSystem* MantleComp = nullptr;
 
 
 
@@ -141,9 +145,7 @@ protected:
 
 public:	
 	
-	
-	
-	bool changeState(PlayerState input);
+	bool changeState(EPlayerState input);
 	void Update(ACharacter& player);
 	
 	

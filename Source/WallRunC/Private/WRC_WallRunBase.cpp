@@ -60,7 +60,8 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	WallRunComp = CreateDefaultSubobject<UWallRun>(TEXT("WallRunComponent"));
 
 	//Create a mantle system component
-	MantleComp = CreateDefaultSubobject<UMantleSystem>(TEXT("MantleComponent"));
+	//MantleComp = CreateDefaultSubobject<UMantleSystem>(TEXT("MantleComponent"));
+
 
 #if 0
 	// Create a gun mesh component
@@ -100,7 +101,11 @@ void AWRC_WallRunBase::BeginPlay()
 
 	GetCharacterMovement()->SetPlaneConstraintEnabled(true);
 
-	
+	if (MantleComp == nullptr) {
+		MantleComp = NewObject<UMantleSystem>(this);
+		MantleComp->RegisterComponent();
+		AddOwnedComponent(MantleComp);
+	}
 	
 	
 
@@ -145,12 +150,12 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 
 		WallRunComp->SetEWallRun(ImpactNormal);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
-		if (CheckWallRun(ImpactNormal) && changeState(STATE_WALLRUN)) {
+		if (CheckWallRun(ImpactNormal) && changeState(EPlayerState::STATE_WALLRUN)) {
 			WallRunComp->BeginWallRun();
 		}
 
 		//For now also do a mantle check after jumping, but consider decoupling this check from this function.
-		if (CheckMantle() && changeState(STATE_MANTLE)) {
+		if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE)) {
 			MantleComp->MoveChar();
 		}
 	}
@@ -176,7 +181,7 @@ bool AWRC_WallRunBase::CheckMantle()
 
 void AWRC_WallRunBase::SetIdle()
 {
-	changeState(STATE_IDLE);
+	changeState(EPlayerState::STATE_IDLE);
 }
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
@@ -199,25 +204,25 @@ void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 
 void AWRC_WallRunBase::Falling()
 {
-	changeState(STATE_NOJUMPSLEFT);
+	changeState(EPlayerState::STATE_NOJUMPSLEFT);
 }
 
 void AWRC_WallRunBase::Landed(const FHitResult& Hit)
 {
 	ResetJump(MaxJumps);
-	changeState(STATE_IDLE);
+	changeState(EPlayerState::STATE_IDLE);
 }
 
 void AWRC_WallRunBase::InputActionJump()
 {
-	if (changeState(STATE_JUMPONCE)||changeState(STATE_DOUBLEJUMP)) {
+	if (changeState(EPlayerState::STATE_JUMPONCE)||changeState(EPlayerState::STATE_DOUBLEJUMP)) {
 		JumpsLeft -= 1;
 		LaunchCharacter(FindLaunchVelocity(), false, true);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Forward %f"), ForwardAxis)); }
 	}
 
 	//Make sure the movechar isn't called twice!!!
-	if (CheckMantle() && changeState(STATE_MANTLE)) {
+	if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE)) {
 		MantleComp->MoveChar();
 	}
 }
@@ -310,34 +315,34 @@ void AWRC_WallRunBase::ClampHorizontalVelocity()
 	}
 }
 
-bool AWRC_WallRunBase::changeState(PlayerState input)
+bool AWRC_WallRunBase::changeState(EPlayerState input)
 {
 	bool changeValid = false;
 
 	switch (input) {
 		//If there's no jumps left (or falling).	
-		case STATE_NOJUMPSLEFT:
-			changeValid = currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN;
+		case EPlayerState::STATE_NOJUMPSLEFT:
+			changeValid = currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN;
 			break;
 		//Jump from idle, or set the character to "have jumped once" after falling off wall.
-		case STATE_JUMPONCE:
-			changeValid = currentState == STATE_IDLE;
+		case EPlayerState::STATE_JUMPONCE:
+			changeValid = currentState == EPlayerState::STATE_IDLE;
 			break;
 		//Jump a second time.
-		case STATE_DOUBLEJUMP:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_DOUBLEJUMP:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
 			break;
 		//Go to idle state from jumping once, double jump, or wall run, or no jumps left.
-		case STATE_IDLE:
-			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN || currentState == STATE_NOJUMPSLEFT || currentState == STATE_MANTLE;
+		case EPlayerState::STATE_IDLE:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE || currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN || currentState == EPlayerState::STATE_NOJUMPSLEFT || currentState == EPlayerState::STATE_MANTLE;
 			break;
 		//Go to wall run state.
-		case STATE_WALLRUN:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_WALLRUN:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
 			break;
 		//Go to mantle state.
-		case STATE_MANTLE:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_MANTLE:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
 			break;
 	}
 	

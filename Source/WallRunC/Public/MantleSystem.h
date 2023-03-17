@@ -29,12 +29,13 @@ public:
 
 
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), BlueprintType, Blueprintable )
 class WALLRUNC_API UMantleSystem : public UActorComponent
 {
 	GENERATED_BODY()
 
-private:
+protected:
+	UPROPERTY(BlueprintReadOnly, Category = "Mantle Properties")
 	class AWRC_WallRunBase* PlayerChar;
 
 	
@@ -59,6 +60,9 @@ public:
 
 	void CharMovementSwitch(bool CharState);
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Mantle Functions")
 	void MoveChar();
+
+	void MoveChar_Implementation();
 	
 };
