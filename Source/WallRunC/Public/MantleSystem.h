@@ -48,6 +48,9 @@ public:
 	float TraceRadius = 500.0f;
 	float MaxDistance = 300.0f;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Sockets")
+	FTransform ChosenSocket;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;

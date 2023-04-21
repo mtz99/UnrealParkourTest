@@ -59,8 +59,14 @@ bool UMantleSystem::LedgeCheck()
 				Sockets = IGrabbableInterface::Execute_GetSockets(OutHit.Actor.Get());
 
 				for (auto& Socket:Sockets) {
-					float CalcDistance = Socket.GetLocation().Size() - PlayerChar->GetActorLocation().Size();
+					float CalcX = Socket.GetLocation().X - PlayerChar->GetActorLocation().X;
+					float CalcY = Socket.GetLocation().Y - PlayerChar->GetActorLocation().Y;
+					float CalcZ = Socket.GetLocation().Z - PlayerChar->GetActorLocation().Z;
+					
+					float CalcDistance = sqrt(pow(CalcX,2) + pow(CalcY,2) + pow(CalcZ,2));
+					
 					if (CalcDistance < MaxDistance) {
+						ChosenSocket = Socket;
 						return true;
 					}
 				}
