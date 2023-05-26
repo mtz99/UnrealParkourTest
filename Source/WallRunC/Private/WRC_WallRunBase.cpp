@@ -41,11 +41,15 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
+	// SceneComponent for the camera rotation
+	CameraRotateLayer = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRotationLayer"));
+	CameraRotateLayer->SetupAttachment(GetCapsuleComponent());
+
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+	FirstPersonCameraComponent->SetupAttachment(CameraRotateLayer);
 	FirstPersonCameraComponent->SetRelativeLocation(FVector(-39.56f, 1.75f, 64.f)); // Position the camera
-	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+	FirstPersonCameraComponent->bUsePawnControlRotation = false;
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
@@ -87,9 +91,7 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 void AWRC_WallRunBase::ResetPlayerCRotation()
 {
-	PlayerCOriginalRotation.Pitch = GetControlRotation().Pitch;
-	PlayerCOriginalRotation.Yaw = GetControlRotation().Yaw;
-	Controller->SetControlRotation(PlayerCOriginalRotation);
+	CameraRotateLayer->SetRelativeRotation(FQuat::Identity);
 }
 
 // Called when the game starts or when spawned

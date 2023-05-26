@@ -48,10 +48,6 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 		USceneComponent* FP_MuzzleLocation;
 
-	/** First person camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		UCameraComponent* FirstPersonCameraComponent;
-
 	/** Character movement component **/
 	UCharacterMovementComponent* CharacterMovementComponent;
 
@@ -89,6 +85,14 @@ public:
 	/** Whether to use motion controller location for aiming. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		uint8 bUsingMotionControllers : 1;
+
+	/** Camera rotation layer **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* CameraRotateLayer;
+
+	/** First person camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		UCameraComponent* FirstPersonCameraComponent;
 
 	
 

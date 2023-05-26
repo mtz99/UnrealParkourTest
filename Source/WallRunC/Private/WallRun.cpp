@@ -61,14 +61,19 @@ void UWallRun::TimelineProgress(float Value)
 	
 	FQuat NewActorRotation(PlayerChar->GetActorForwardVector(), FMath::DegreesToRadians((Value - prevRotatorValue)));
 
-	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
+	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
 	
+	//Why is the camera not rotating??? Maybe transform instead of rotate?
+	PlayerChar->CameraRotateLayer->AddLocalRotation(FRotator(NewActorRotation));
+
+#if 0
 	if (PlayerChar->Controller != nullptr) {
 		//Add in input rotation
 		PlayerChar->GetCapsuleComponent()->AddLocalRotation(FRotator(NewActorRotation));
 		//Set the control rotation using the capsules rotation
 		PlayerChar->Controller->SetControlRotation(PlayerChar->GetCapsuleComponent()->GetComponentRotation());
 	}
+#endif
 
 	
 	
@@ -94,13 +99,17 @@ void UWallRun::SetEWallRun(FVector ImpactNormal)
 }
 
 
-//Camera tilt could either be state mgmt issue or unknown flag I don't know of, or maybe I need to recreate timeline everytime?
-//Maybe there's a reset function for timeline.
+//Something is causing the character to not rotate around the Z axis only (jammed values? maybe a flag related to using parent rotation is on?)
+//May have a lead, the camera layer should only rotate along the x-axis, but something is causing it to also change it to the y-axis (as well as halfway between the 2 if the wall
+//is at a slant between the 2 axes. Also, you need to find an alternative to relying on pawn movement for the camera control.
 
 void UWallRun::BeginWallRun()
 {
 	//Clearing all reset delegates.
 	CurveTimeline.SetTimelineFinishedFunc(FOnTimelineEvent());
+
+	//Resetting prevRotatorValue.
+	prevRotatorValue = 0.0f;
 
 	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("Begin Wall Run."))); }
 	FVector planeNormal;
@@ -139,13 +148,16 @@ void UWallRun::EndWallRun(StopReason reason)
 
 	//Calls function to change state machine to falling (NOJUMPSLEFT).
 	PlayerChar->Falling();
-
+	
 	//Binded function to reset player rotation
 	FOnTimelineEvent ResetDelegate;
 	
 	ResetDelegate.BindDynamic(this, &UWallRun::ResetPlayerCRotation);
 
 	CurveTimeline.SetTimelineFinishedFunc(ResetDelegate);
+
+	//Reset rotation of Camera component.
+	//PlayerChar->FirstPersonCameraComponent->SetRelativeRotation(FQuat::Identity);
 }
 
 void UWallRun::ResetPlayerCRotation() 
@@ -227,9 +239,10 @@ void UWallRun::UpdateWallRun()
 void UWallRun::BeginCameraTilt()
 {
 	if (CurveFloat) {
-		PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
+		/*PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
 		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
 		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
+		*/
 
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, CurveTimeline.IsPlaying() ? "True" : "False"); }
 
@@ -241,9 +254,9 @@ void UWallRun::BeginCameraTilt()
 void UWallRun::EndCameraTilt()
 {
 	if (CurveFloat) {
-		PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
+		/*PlayerChar->XRoll = PlayerChar->GetControlRotation().Roll;
 		PlayerChar->YPitch = PlayerChar->GetControlRotation().Pitch;
-		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;
+		PlayerChar->ZYaw = PlayerChar->GetControlRotation().Yaw;*/
 
 		CurveTimeline.ReverseFromEnd();
 		
