@@ -9,8 +9,11 @@
 #include "GameFramework/InputSettings.h"
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 
+
 #include "DrawDebugHelpers.h"
 #include "WallRunC/Public/WRC_WallRunBase.h"
+
+#include "WallRunC/Public/WallRunCameraModifier.h"
 
 #include "Components/TimelineComponent.h"
 
@@ -24,10 +27,13 @@ UWallRun::UWallRun(const FObjectInitializer& ObjectInitalizer)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+
+	
 }
 
 void UWallRun::BeginPlay()
 {
+
 	Super::BeginPlay();
 
 	PlayerChar = Cast<AWRC_WallRunBase>(this->GetOwner());
@@ -42,6 +48,9 @@ void UWallRun::BeginPlay()
 	CurveTimeline.AddInterpFloat(CurveFloat, TimelineProgress);
 	CurveTimeline.SetLooping(false);
 
+	//Create a wall run camera modifier component
+	APlayerController* PlayerCharController = PlayerChar->GetController<APlayerController>();
+	WallRunCamMod = CastChecked<UWallRunCameraModifier>(PlayerCharController->PlayerCameraManager->AddNewCameraModifier(UWallRunCameraModifier::StaticClass()));
 	
 }
 
@@ -59,6 +68,7 @@ void UWallRun::TimelineProgress(float Value)
 
 	Value = Value * CamRollMultiplier;*/
 	
+#if 0
 	FQuat NewActorRotation(PlayerChar->GetActorForwardVector(), FMath::DegreesToRadians((Value - prevRotatorValue)));
 
 	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
@@ -66,19 +76,26 @@ void UWallRun::TimelineProgress(float Value)
 	//Why is the camera not rotating??? Maybe transform instead of rotate?
 	PlayerChar->CameraRotateLayer->AddLocalRotation(FRotator(NewActorRotation));
 
-#if 0
+
 	if (PlayerChar->Controller != nullptr) {
 		//Add in input rotation
 		PlayerChar->GetCapsuleComponent()->AddLocalRotation(FRotator(NewActorRotation));
 		//Set the control rotation using the capsules rotation
 		PlayerChar->Controller->SetControlRotation(PlayerChar->GetCapsuleComponent()->GetComponentRotation());
 	}
-#endif
+
 
 	
 	
 	prevRotatorValue = Value;
+#endif
 
+	if (GEngine) {
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunRotation:%f, %f, %f,"),
+			PlayerChar->GetCharacterMovement()->GetLastUpdateRotation().Pitch,
+			PlayerChar->GetCharacterMovement()->GetLastUpdateRotation().Yaw,
+			PlayerChar->GetCharacterMovement()->GetLastUpdateRotation().Roll));
+	}
 }
 
 void UWallRun::InputActionJump()
@@ -105,6 +122,8 @@ void UWallRun::SetEWallRun(FVector ImpactNormal)
 
 void UWallRun::BeginWallRun()
 {
+	WallRunCamMod->EnableModifier();
+	
 	//Clearing all reset delegates.
 	CurveTimeline.SetTimelineFinishedFunc(FOnTimelineEvent());
 
@@ -119,11 +138,15 @@ void UWallRun::BeginWallRun()
 	//PlayerChar->GetCharacterMovement()->SetPlaneConstraintNormal(planeNormal);
 	WallRunningBool = true;
 	BeginCameraTilt();
+	
+
 }
 
 void UWallRun::EndWallRun(StopReason reason)
 {
 	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("End Wall Run."))); }
+
+	WallRunCamMod->DisableModifier();
 
 	FVector PlaneNorm;
 	PlaneNorm.X = 0.0;
@@ -164,76 +187,6 @@ void UWallRun::ResetPlayerCRotation()
 {
 	PlayerChar->ResetPlayerCRotation();
 }
-
-
-void UWallRun::UpdateWallRun()
-{
-	//Local variables
-	FHitResult OutHit;
-	FVector TraceEnd;
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(PlayerChar);
-	FRDASVals FRDASVals;
-
-
-	if (!AreRequiredKeysDown()) {
-		
-		EndWallRun(fell);
-		return;
-	}
-
-	float multiplyVal;
-	/*FVector WallRunSideLocalZ;*/
-	if (eWallRun == left) {
-		multiplyVal = -200.0f;
-	}
-	else {
-		multiplyVal = 200.0f;
-
-	}
-
-	TraceEnd = PlayerChar->GetActorLocation() + (FVector::CrossProduct(WallRunDirection, FVector::UpVector) * multiplyVal);
-
-
-
-
-	bool TraceHit = GetWorld()->LineTraceSingleByChannel(OutHit, PlayerChar->GetActorLocation(), TraceEnd, ECC_WorldStatic, CollisionParams);
-	//Trace debug stuff
-	//DrawDebugLine(GetWorld(), PlayerChar->GetActorLocation(), TraceEnd, TraceHit ? FColor::Green : FColor::Red, false, 100.0f);
-	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, TraceHit ? "True" : "False"); }
-
-
-
-	if (!TraceHit) {
-		EndWallRun(fell);
-		return;
-	}
-
-	FindRunDirectionAndSide(OutHit.ImpactNormal, FRDASVals);
-
-	if (FRDASVals.Side != eWallRun) {
-		EndWallRun(fell);
-		return;
-	}
-
-	WallRunDirection = FRDASVals.Direction;
-
-	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunDirection:%f, %f,"), WallRunDirection.X, WallRunDirection.Y)); }
-
-#if 0
-	if (GEngine) {
-		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, FString::Printf(TEXT("WallRunVelocity:%f, %f, %f,"),
-			PlayerChar->GetCharacterMovement()->Velocity.X,
-			PlayerChar->GetCharacterMovement()->Velocity.Y,
-			PlayerChar->GetCharacterMovement()->Velocity.Z));
-	}
-#endif
-
-	PlayerChar->GetCharacterMovement()->Velocity.X = WallRunDirection.X * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
-	PlayerChar->GetCharacterMovement()->Velocity.Y = WallRunDirection.Y * PlayerChar->GetCharacterMovement()->GetMaxSpeed();
-	PlayerChar->GetCharacterMovement()->Velocity.Z = 0.0;
-}
-
 
 
 void UWallRun::BeginCameraTilt()
@@ -353,7 +306,7 @@ void UWallRun::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorCo
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	if (WallRunningBool) {
-		UpdateWallRun();
+		WallRunCamMod->UpdateWallRun();
 	}
 
 	CurveTimeline.TickTimeline(DeltaTime);

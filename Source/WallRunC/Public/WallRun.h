@@ -15,9 +15,15 @@ UCLASS()
 class WALLRUNC_API UWallRun : public UActorComponent
 {
 	GENERATED_BODY()
-private:
-	class AWRC_WallRunBase* PlayerChar;
 
+private:
+	
+	
+	UPROPERTY(EditAnywhere, Category = "WallRunCamMod")
+		class UWallRunCameraModifier* WallRunCamMod;
+
+
+public:
 
 	FVector WallRunDirection;
 
@@ -31,8 +37,10 @@ private:
 
 	float prevRotatorValue = 0.0f;
 
-public:
+
 	
+	class AWRC_WallRunBase* PlayerChar;
+
 	UWallRun(const FObjectInitializer& ObjectInitalizer);
 
 	virtual void BeginPlay() override;
@@ -61,8 +69,6 @@ public:
 
 	UFUNCTION()
 	void ResetPlayerCRotation();
-
-	void UpdateWallRun();
 
 	void BeginCameraTilt();
 
