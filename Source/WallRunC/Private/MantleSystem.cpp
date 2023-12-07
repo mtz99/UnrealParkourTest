@@ -19,8 +19,6 @@ UMantleSystem::UMantleSystem()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
-
-
 	// ...
 }
 
@@ -67,6 +65,7 @@ bool UMantleSystem::LedgeCheck()
 					
 					if (CalcDistance < MaxDistance) {
 						ChosenSocket = Socket;
+						
 						return true;
 					}
 				}
@@ -87,6 +86,25 @@ bool UMantleSystem::LedgeCheck()
 	
 
 
+}
+
+AActor* UMantleSystem::ReturnLedge()
+{
+	//Local variables
+	TArray<FHitResult> OutHits;
+	AActor* returnValue;
+	TArray <AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(PlayerChar->GetParentActor());
+
+	const bool Hit = UKismetSystemLibrary::SphereTraceMultiByProfile(GetWorld(), PlayerChar->GetActorLocation(), PlayerChar->GetActorLocation(), TraceRadius, "Climbable", false, ActorsToIgnore,
+		EDrawDebugTrace::None, OutHits, true);
+	if (Hit) {
+
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Ledge return successful!"))); }
+		return (returnValue = OutHits[0].GetActor());
+	}
+
+	return 0;
 }
 
 void UMantleSystem::CharMovementSwitch(bool CharState)

@@ -61,7 +61,7 @@ void UWallRun::TimelineProgress(float Value)
 	
 	FQuat NewActorRotation(PlayerChar->GetActorForwardVector(), FMath::DegreesToRadians((Value - prevRotatorValue)));
 
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, NewActorRotation.ToString()); } //Debug for cam rotation.
 	
 	//Why is the camera not rotating??? Maybe transform instead of rotate?
 	PlayerChar->CameraRotateLayer->AddLocalRotation(FRotator(NewActorRotation));

@@ -133,6 +133,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess), Category = "MantleComp")
 	class UMantleSystem* MantleComp = nullptr;
 
+	AActor* LedgeToIgnore;
 
 
 protected:

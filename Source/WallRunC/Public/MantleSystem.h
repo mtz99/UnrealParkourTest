@@ -61,6 +61,8 @@ public:
 
 	bool LedgeCheck();
 
+	AActor* ReturnLedge();
+
 	void CharMovementSwitch(bool CharState);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Mantle Functions")

@@ -63,9 +63,8 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	//Create a wall run component
 	WallRunComp = CreateDefaultSubobject<UWallRun>(TEXT("WallRunComponent"));
 
-	//Create a mantle system component
-	//MantleComp = CreateDefaultSubobject<UMantleSystem>(TEXT("MantleComponent"));
-
+	//Create ledge ignore array.
+	LedgeToIgnore = nullptr;
 
 #if 0
 	// Create a gun mesh component
@@ -156,10 +155,10 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 			WallRunComp->BeginWallRun();
 		}
 
-		//For now also do a mantle check after jumping, but consider decoupling this check from this function.
+		/*//For now also do a mantle check after jumping, but consider decoupling this check from this function.
 		if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE)) {
 			MantleComp->MoveChar();
-		}
+		}*/
 	}
 }
 
@@ -224,8 +223,9 @@ void AWRC_WallRunBase::InputActionJump()
 	}
 
 	//Make sure the movechar isn't called twice!!!
-	if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE)) {
+	if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE) && LedgeToIgnore == nullptr) {
 		MantleComp->MoveChar();
+		LedgeToIgnore = MantleComp->ReturnLedge(); //Figure out when to reset this!
 	}
 }
 
@@ -344,7 +344,7 @@ bool AWRC_WallRunBase::changeState(EPlayerState input)
 			break;
 		//Go to mantle state.
 		case EPlayerState::STATE_MANTLE:
-			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE || currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN;
 			break;
 	}
 	
