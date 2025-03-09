@@ -206,16 +206,22 @@ void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 void AWRC_WallRunBase::Falling()
 {
 	changeState(EPlayerState::STATE_NOJUMPSLEFT);
+	
 }
 
 void AWRC_WallRunBase::Landed(const FHitResult& Hit)
 {
 	ResetJump(MaxJumps);
 	changeState(EPlayerState::STATE_IDLE);
+	if (CheckMantle())
+	{
+		LedgeToIgnore = MantleComp->ReturnLedge();
+	}
 }
 
 void AWRC_WallRunBase::InputActionJump()
 {
+	
 	if (changeState(EPlayerState::STATE_JUMPONCE)||changeState(EPlayerState::STATE_DOUBLEJUMP)) {
 		JumpsLeft -= 1;
 		LaunchCharacter(FindLaunchVelocity(), false, true);
@@ -225,7 +231,7 @@ void AWRC_WallRunBase::InputActionJump()
 	//Make sure the movechar isn't called twice!!!
 	if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE) && LedgeToIgnore == nullptr) {
 		MantleComp->MoveChar();
-		LedgeToIgnore = MantleComp->ReturnLedge(); //Figure out when to reset this!
+		//LedgeToIgnore = MantleComp->ReturnLedge(); Figure out when to reset this!
 	}
 }
 
@@ -337,6 +343,10 @@ bool AWRC_WallRunBase::changeState(EPlayerState input)
 		//Go to idle state from jumping once, double jump, or wall run, or no jumps left.
 		case EPlayerState::STATE_IDLE:
 			changeValid = currentState == EPlayerState::STATE_JUMPONCE || currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN || currentState == EPlayerState::STATE_NOJUMPSLEFT || currentState == EPlayerState::STATE_MANTLE;
+			if (!CheckMantle())
+			{
+				LedgeToIgnore = nullptr;
+			}
 			break;
 		//Go to wall run state.
 		case EPlayerState::STATE_WALLRUN:

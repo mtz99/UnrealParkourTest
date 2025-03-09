@@ -100,7 +100,7 @@ AActor* UMantleSystem::ReturnLedge()
 		EDrawDebugTrace::None, OutHits, true);
 	if (Hit) {
 
-		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Ledge return successful!"))); }
+		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Ledge return successful!"))); }
 		return (returnValue = OutHits[0].GetActor());
 	}
 
@@ -127,7 +127,7 @@ void UMantleSystem::CharMovementSwitch(bool CharState)
 
 void UMantleSystem::MoveChar_Implementation()
 {
-	if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("It's mantlin time!"))); }
+	//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("It's mantlin time!"))); }
 
 	//The following call below isn't needed as the char movement comp is handling the transition, but fix the animation system.
 	
