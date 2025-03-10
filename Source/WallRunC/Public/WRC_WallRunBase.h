@@ -18,6 +18,17 @@ class USoundBase;
 class UCurveFloat;
 
 
+UENUM(BlueprintType)
+enum class EPlayerState: uint8 {
+	STATE_IDLE,
+	STATE_JUMPONCE,
+	STATE_DOUBLEJUMP,
+	STATE_WALLRUN,
+	STATE_NOJUMPSLEFT,
+	STATE_MANTLE
+};
+
+
 #define OnWall(execute), (true, false)
 
 UCLASS()
@@ -26,7 +37,7 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 	GENERATED_BODY()
 
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Mesh, meta = (AllowPrivateAccess = "true"))
 		USkeletalMeshComponent* Mesh1P;
 
 	/** Gun mesh: 1st person view (seen only by self) */
@@ -36,10 +47,6 @@ class WALLRUNC_API AWRC_WallRunBase : public ACharacter
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 		USceneComponent* FP_MuzzleLocation;
-
-	/** First person camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		UCameraComponent* FirstPersonCameraComponent;
 
 	/** Character movement component **/
 	UCharacterMovementComponent* CharacterMovementComponent;
@@ -79,6 +86,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		uint8 bUsingMotionControllers : 1;
 
+	/** Camera rotation layer **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* CameraRotateLayer;
+
+	/** First person camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		UCameraComponent* FirstPersonCameraComponent;
+
 	
 
 	UPROPERTY()
@@ -108,20 +123,17 @@ public:
 
 private:
 	
-	enum PlayerState {
-		STATE_IDLE,
-		STATE_JUMPONCE,
-		STATE_DOUBLEJUMP,
-		STATE_WALLRUN,
-		STATE_NOJUMPSLEFT,
-		STATE_MANTLE
-	};
-
-	PlayerState currentState = STATE_IDLE;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), Category = "CharacterStateMachine")
+	EPlayerState currentState = EPlayerState::STATE_IDLE;
 
 	UPROPERTY(EditAnywhere, Category = "WallRunComp")
 	class UWallRun* WallRunComp;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess), Category = "MantleComp")
+	class UMantleSystem* MantleComp = nullptr;
+
+	AActor* LedgeToIgnore;
 
 
 protected:
@@ -138,9 +150,7 @@ protected:
 
 public:	
 	
-	
-	
-	bool changeState(PlayerState input);
+	bool changeState(EPlayerState input);
 	void Update(ACharacter& player);
 	
 	
@@ -158,6 +168,10 @@ public:
 	void OnComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 	
 	bool CheckWallRun(FVector ImpactNormal);
+
+	bool CheckMantle();
+
+	void SetIdle();
 	
 	void InputAxisMoveForward(float Val);
 

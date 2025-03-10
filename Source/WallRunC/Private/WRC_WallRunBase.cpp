@@ -11,6 +11,7 @@
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 
 #include "WallRunC/Public/WallRun.h"
+#include "WallRunC/Public/MantleSystem.h"
 
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
@@ -40,11 +41,15 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
+	// SceneComponent for the camera rotation
+	CameraRotateLayer = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRotationLayer"));
+	CameraRotateLayer->SetupAttachment(GetCapsuleComponent());
+
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+	FirstPersonCameraComponent->SetupAttachment(CameraRotateLayer);
 	FirstPersonCameraComponent->SetRelativeLocation(FVector(-39.56f, 1.75f, 64.f)); // Position the camera
-	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+	FirstPersonCameraComponent->bUsePawnControlRotation = false;
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
@@ -57,6 +62,9 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 	//Create a wall run component
 	WallRunComp = CreateDefaultSubobject<UWallRun>(TEXT("WallRunComponent"));
+
+	//Create ledge ignore array.
+	LedgeToIgnore = nullptr;
 
 #if 0
 	// Create a gun mesh component
@@ -82,9 +90,7 @@ AWRC_WallRunBase::AWRC_WallRunBase(const FObjectInitializer& ObjectInitalizer)
 
 void AWRC_WallRunBase::ResetPlayerCRotation()
 {
-	PlayerCOriginalRotation.Pitch = GetControlRotation().Pitch;
-	PlayerCOriginalRotation.Yaw = GetControlRotation().Yaw;
-	Controller->SetControlRotation(PlayerCOriginalRotation);
+	CameraRotateLayer->SetRelativeRotation(FQuat::Identity);
 }
 
 // Called when the game starts or when spawned
@@ -96,7 +102,11 @@ void AWRC_WallRunBase::BeginPlay()
 
 	GetCharacterMovement()->SetPlaneConstraintEnabled(true);
 
-	
+	if (MantleComp == nullptr) {
+		MantleComp = NewObject<UMantleSystem>(this);
+		MantleComp->RegisterComponent();
+		AddOwnedComponent(MantleComp);
+	}
 	
 	
 
@@ -141,9 +151,14 @@ void AWRC_WallRunBase::OnComponentHit(UPrimitiveComponent* HitComp, AActor* Othe
 
 		WallRunComp->SetEWallRun(ImpactNormal);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, ImpactNormal.ToString()); }
-		if (CheckWallRun(ImpactNormal) && changeState(STATE_WALLRUN)) {
+		if (CheckWallRun(ImpactNormal) && changeState(EPlayerState::STATE_WALLRUN)) {
 			WallRunComp->BeginWallRun();
 		}
+
+		/*//For now also do a mantle check after jumping, but consider decoupling this check from this function.
+		if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE)) {
+			MantleComp->MoveChar();
+		}*/
 	}
 }
 
@@ -151,13 +166,7 @@ bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
 {
 	if (WallRunComp->CanSurfaceWallBeRan(ImpactNormal)) {
 		if (GetCharacterMovement()->IsFalling())
-		{
-			//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, WallRunComp->AreRequiredKeysDown() ? "True" : "False"); }
-			
-			/*FString debugMsg = FString::Printf(TEXT("WallRun: %d Forward %.2f Right: %.2f"), WallRunComp->AreRequiredKeysDown(), ForwardAxis, RightAxis);
-			if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, *debugMsg); }*/
-
-			
+		{	
 			if (WallRunComp->AreRequiredKeysDown()) {
 				return true;
 			}
@@ -166,6 +175,15 @@ bool AWRC_WallRunBase::CheckWallRun(FVector ImpactNormal)
 	return false;
 }
 
+bool AWRC_WallRunBase::CheckMantle()
+{
+	return MantleComp->LedgeCheck();
+}
+
+void AWRC_WallRunBase::SetIdle()
+{
+	changeState(EPlayerState::STATE_IDLE);
+}
 
 void AWRC_WallRunBase::InputAxisMoveForward(float Val)
 {
@@ -187,23 +205,34 @@ void AWRC_WallRunBase::InputAxisMoveRight(float Val)
 
 void AWRC_WallRunBase::Falling()
 {
-	changeState(STATE_NOJUMPSLEFT);
+	changeState(EPlayerState::STATE_NOJUMPSLEFT);
+	
 }
 
 void AWRC_WallRunBase::Landed(const FHitResult& Hit)
 {
 	ResetJump(MaxJumps);
-	changeState(STATE_IDLE);
+	changeState(EPlayerState::STATE_IDLE);
+	if (CheckMantle())
+	{
+		LedgeToIgnore = MantleComp->ReturnLedge();
+	}
 }
 
 void AWRC_WallRunBase::InputActionJump()
 {
-	if (changeState(STATE_JUMPONCE)||changeState(STATE_DOUBLEJUMP)) {
+	
+	if (changeState(EPlayerState::STATE_JUMPONCE)||changeState(EPlayerState::STATE_DOUBLEJUMP)) {
 		JumpsLeft -= 1;
 		LaunchCharacter(FindLaunchVelocity(), false, true);
 		//if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("Forward %f"), ForwardAxis)); }
 	}
-	
+
+	//Make sure the movechar isn't called twice!!!
+	if (CheckMantle() && changeState(EPlayerState::STATE_MANTLE) && LedgeToIgnore == nullptr) {
+		MantleComp->MoveChar();
+		//LedgeToIgnore = MantleComp->ReturnLedge(); Figure out when to reset this!
+	}
 }
 
 void AWRC_WallRunBase::EndWallRun(bool FallReason) 
@@ -294,34 +323,38 @@ void AWRC_WallRunBase::ClampHorizontalVelocity()
 	}
 }
 
-bool AWRC_WallRunBase::changeState(PlayerState input)
+bool AWRC_WallRunBase::changeState(EPlayerState input)
 {
 	bool changeValid = false;
 
 	switch (input) {
 		//If there's no jumps left (or falling).	
-		case STATE_NOJUMPSLEFT:
-			changeValid = currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN;
+		case EPlayerState::STATE_NOJUMPSLEFT:
+			changeValid = currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN;
 			break;
 		//Jump from idle, or set the character to "have jumped once" after falling off wall.
-		case STATE_JUMPONCE:
-			changeValid = currentState == STATE_IDLE;
+		case EPlayerState::STATE_JUMPONCE:
+			changeValid = currentState == EPlayerState::STATE_IDLE;
 			break;
 		//Jump a second time.
-		case STATE_DOUBLEJUMP:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_DOUBLEJUMP:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
 			break;
 		//Go to idle state from jumping once, double jump, or wall run, or no jumps left.
-		case STATE_IDLE:
-			changeValid = currentState == STATE_JUMPONCE || currentState == STATE_DOUBLEJUMP || currentState == STATE_WALLRUN || currentState == STATE_NOJUMPSLEFT || currentState == STATE_MANTLE;
+		case EPlayerState::STATE_IDLE:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE || currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN || currentState == EPlayerState::STATE_NOJUMPSLEFT || currentState == EPlayerState::STATE_MANTLE;
+			if (!CheckMantle())
+			{
+				LedgeToIgnore = nullptr;
+			}
 			break;
 		//Go to wall run state.
-		case STATE_WALLRUN:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_WALLRUN:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE;
 			break;
 		//Go to mantle state.
-		case STATE_MANTLE:
-			changeValid = currentState == STATE_JUMPONCE;
+		case EPlayerState::STATE_MANTLE:
+			changeValid = currentState == EPlayerState::STATE_JUMPONCE || currentState == EPlayerState::STATE_DOUBLEJUMP || currentState == EPlayerState::STATE_WALLRUN;
 			break;
 	}
 	
